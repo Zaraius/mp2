@@ -875,7 +875,10 @@ class FiveDOFRobot:
 
         ########################################
 
-       self.DH = [
+        # Define DH matrix for Hiwonder 6 DOF robot arm car
+        # Degree rotations converted to radians
+        # theta, d, a, alpha
+        self.DH = [
             [self.theta[0], self.l1, 0, np.pi / 2],
             [self.theta[1], 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
