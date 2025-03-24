@@ -894,9 +894,9 @@ class FiveDOFRobot:
 
         self.DH = [
             [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1], 0, self.l2, np.pi],
-            [self.theta[2], self.l3, 0, np.pi],
-            [self.theta[3], 0, 0, np.pi / 2],
+            [self.theta[1] - 90, 0, self.l2, np.pi],
+            [self.theta[2], 0, self.l3, np.pi],
+            [self.theta[3] + np.pi/2, 0, 0, np.pi / 2],
             [self.theta[4], self.l4 + self.l5, 0, 0],
         ]
 
@@ -960,6 +960,9 @@ class FiveDOFRobot:
 
         # insert your code here
         x, y, z = EE.x, EE.y, EE.z
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+
         l1, l2, l3, l4, l5 = self.l1, self.l2, self.l3, self.l4, self.l5
 
         # Slightly perturb the robot from singularity at zero configuration
@@ -973,14 +976,19 @@ class FiveDOFRobot:
             print(f"{self.T_ee=}")
             print(f"{self.T_ee[0,3]=}")
             print((l5 + l4) * self.T_ee[0, 3])
-            r5 = np.get_submatrix(self.T_ee, 0, 0)
+            r5 = EE_rot
             ee_pos = [x, y, z]
             k = [0, 0, 1]
-            p_wrist = ee_pos - (l4 + l5) * r5 @ k
+            p_wrist = ee_pos - ((l4 + l5) * (r5 @ k)) #THIS IS NOT?!? CORRECT
+            print(((l4 + l5) * (r5 @ k)))
+            print(f"{p_wrist=}")
+            # x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
+            # y3 = y - (l5 + l4) * self.T_ee[1, 3]
+            # z3 = z - (l5 + l4) * self.T_ee[2, 3]
 
-            x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
-            y3 = y - (l5 + l4) * self.T_ee[1, 3]
-            z3 = z - (l5 + l4) * self.T_ee[2, 3]
+            x3 = p_wrist[0]
+            y3 = p_wrist[1]
+            z3 = p_wrist[2] - l1
 
             # this seems funky
             # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
@@ -1007,7 +1015,7 @@ class FiveDOFRobot:
                 f = R_3_5[1, 2]
                 self.theta[3] = np.arccos(f)
                 h = R_3_5[2, 1]
-                self.theta[4] = -np.arccos(h)
+                self.theta[4] = np.arccos(h)
                 print(f"{np.rad2deg(self.theta)=}")
                 # multiply R_0_3)T R_0_5 = R_3_5
                 # f = R_3_5[1,2]
