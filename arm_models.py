@@ -85,6 +85,12 @@ class Robot:
             soln (int, optional): The inverse kinematics solution to use (0 or 1).
             numerical (bool, optional): Whether to use numerical inverse kinematics.
         """
+
+        theta_text = "Joint Positions (deg/m):     ["
+        for i in range(5):
+            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),2)}, "
+        theta_text += " ]"
+        print(theta_text)
         if pose is not None:  # Inverse kinematics case
             if not numerical:
                 self.robot.calc_inverse_kinematics(pose, soln=soln)
@@ -878,13 +884,22 @@ class FiveDOFRobot:
         # Define DH matrix for Hiwonder 6 DOF robot arm car
         # Degree rotations converted to radians
         # theta, d, a, alpha
+        # self.DH = [
+        #     [self.theta[0], self.l1, 0, np.pi / 2],
+        #     [self.theta[1], 0, self.l2, np.pi],
+        #     [self.theta[2], 0, self.l3, np.pi],
+        #     [self.theta[3], 0, self.l4, -np.pi / 2],
+        #     [self.theta[4], self.l5, 0, 0],
+        # ]
+
         self.DH = [
-            [self.theta[0], self.l1, 0, np.pi / 2],
+            [self.theta[0], self.l1, 0, -np.pi / 2],
             [self.theta[1], 0, self.l2, np.pi],
-            [self.theta[2], 0, self.l3, np.pi],
-            [self.theta[3], 0, self.l4, -np.pi / 2],
-            [self.theta[4], self.l5, 0, 0],
+            [self.theta[2], self.l3, 0, np.pi],
+            [self.theta[3], 0, 0, np.pi / 2],
+            [self.theta[4], self.l4 + self.l5, 0, 0],
         ]
+
         self.T = np.stack(
             [
                 dh_to_matrix(self.DH[0]),
@@ -941,7 +956,7 @@ class FiveDOFRobot:
         """
         ########################################
 
-                ########################################
+        ########################################
 
         # insert your code here
         x, y, z = EE.x, EE.y, EE.z
@@ -957,22 +972,31 @@ class FiveDOFRobot:
             # Select inverse kinematics solution
             print(f"{self.T_ee=}")
             print(f"{self.T_ee[0,3]=}")
-            print((l5 + l4) * self.T_ee[0,3])
-            x3 = x - (l5 + l4) * self.T_ee[0,3]
-            y3 = z - (l5 + l4) * self.T_ee[1,3]
-            z3 = z - (l5 + l4) * self.T_ee[2,3]
-            l = sqrt((x - x3)**2 + (y-y3)**2 + (z-z3-l1)**2)
-   
+            print((l5 + l4) * self.T_ee[0, 3])
+            r5 = np.get_submatrix(self.T_ee, 0, 0)
+            ee_pos = [x, y, z]
+            k = [0, 0, 1]
+            p_wrist = ee_pos - (l4 + l5) * r5 @ k
+
+            x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
+            y3 = y - (l5 + l4) * self.T_ee[1, 3]
+            z3 = z - (l5 + l4) * self.T_ee[2, 3]
+
+            # this seems funky
+            # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
+            l = sqrt(x3**2 + y3**2 + z3**2)
             print(f"{l=}")
             if soln == 0:
                 # self.thetas = .....
-                self.theta[0] = atan2(y,x)
-
-                phi = np.arccos((l2**2 + l3**2 - l**2)/2*l2*l3)
+                # correct ???
+                self.theta[0] = atan2(y, x)
+                print(f"{(l2**2 + l3**2 - l**2) / (2 * l2 * l3)=}")
+                phi = np.arccos((l2**2 + l3**2 - l**2) / (2 * l2 * l3))
                 self.theta[2] = PI - phi
-                r = l3*sin(self.theta[2])
-                beta = np.arcsin(r/l)
-                alpha = atan2((z - z3) , (x - x3))
+                r = l3 * sin(self.theta[2])
+                print(f"{(r / l)=}")
+                beta = np.arcsin(r / l)
+                alpha = atan2((z - z3), (x - x3))
                 self.theta[1] = alpha - beta
 
                 # find R_0_3
@@ -980,20 +1004,18 @@ class FiveDOFRobot:
                 # find R_0_5
                 R_0_5 = R_0_3 @ self.T[3] @ self.T[4]
                 R_3_5 = np.matrix_transpose(R_0_3) @ R_0_5
-                f = R_3_5[1,2]
+                f = R_3_5[1, 2]
                 self.theta[3] = np.arccos(f)
-                h = R_3_5[2,1]
+                h = R_3_5[2, 1]
                 self.theta[4] = -np.arccos(h)
-
-                print(f"{self.theta=}")
+                print(f"{np.rad2deg(self.theta)=}")
                 # multiply R_0_3)T R_0_5 = R_3_5
-                # f = R_3_5[1,2] 
+                # f = R_3_5[1,2]
                 # self.theta[3] = f
-
 
             elif soln == 1:
                 # Alternate solution for theta_1 and theta_2
-                self.theta[0] = atan2(y/x) + PI
+                self.theta[0] = atan2(y / x) + PI
 
                 # self.thetas = .....
 
@@ -1015,7 +1037,6 @@ class FiveDOFRobot:
 
         # Recalculate Forward Kinematics to update the robot's configuration
         self.calc_forward_kinematics(self.theta, radians=True)
-
 
         ########################################
 
@@ -1095,3 +1116,7 @@ class FiveDOFRobot:
         self.EE_axes = np.array(
             [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
         )
+        theta_text = "Joint Positions (deg/m):     ["
+        for i in range(5):
+            theta_text += f" {round(np.rad2deg(self.theta[i]),2)}, "
+        theta_text += " ]"

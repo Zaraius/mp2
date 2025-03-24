@@ -119,6 +119,7 @@ class Visualizer:
         )
         self.fk_reset_button.grid(column=0, row=row_number, columnspan=2, pady=5)
         row_number += 3
+        
 
         # ------------------------------------------------------------------------------------------------
         # Inverse position kinematics
