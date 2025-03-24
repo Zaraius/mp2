@@ -278,7 +278,7 @@ class TwoDOFRobot:
         self.l2 = 0.25  # Length of the second arm segment
 
         self.theta = [0.0, 0.0]  # Joint angles (in radians)
-        print(f"NORMAL SELF.THETA {self.theta}")
+        #print(f"NORMAL SELF.THETA {self.theta}")
         self.theta_limits = [[-PI, PI], [-PI + 0.261, PI - 0.261]]  # Joint limits
 
         self.ee = EndEffector()  # The end-effector object
@@ -505,7 +505,7 @@ class TwoDOFRobot:
             theta[1] = theta[1] * (np.pi / 180)
 
         # Compute forward kinematics
-        print(f"{theta[0]=}")
+        #print(f"{theta[0]=}")
         x = self.l1 * cos(theta[0]) + self.l2 * cos(theta[0] + theta[1])
         y = self.l1 * sin(theta[0]) + self.l2 * sin(theta[0] + theta[1])
 
@@ -611,12 +611,7 @@ class ScaraRobot:
         self.DH = np.zeros((5, 4))  # Denavit-Hartenberg parameters (theta, d, a, alpha)
         self.T = np.zeros((self.num_dof, 4, 4))  # Transformation matrices
 
-        ########################################
-
-        # insert your additional code here
-
-        ########################################
-
+       
     def calc_forward_kinematics(self, theta: list, radians=False):
         """
         Calculate Forward Kinematics (FK) based on the given joint angles.
@@ -875,7 +870,7 @@ class FiveDOFRobot:
 
         ########################################
 
-       self.DH = [
+        self.DH = [
             [self.theta[0], self.l1, 0, np.pi / 2],
             [self.theta[1], 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
@@ -939,6 +934,59 @@ class FiveDOFRobot:
         ########################################
 
         # insert your code here
+
+        x, y, z = EE.x, EE.y, EE.z
+        l1, l2, l3, l4, l5 = self.l1, self.l2, self.l3, self.l4, self.l5
+
+        # Slightly perturb the robot from singularity at zero configuration
+        if all(th == 0.0 for th in self.theta):
+            self.theta = [
+                self.theta[i] + np.random.rand() * 0.01 for i in range(self.num_dof)
+            ]
+
+            # Select inverse kinematics solution
+            if soln == 0:
+               # Calculate theta 1
+                self.theta[0] = atan(y/x)
+               
+                # Calculate theta 2 & 3 (Normal 2 DOF)
+                # Solution 0: Calculate joint angles using cosine rule
+                beta = np.arccos((l2**2 + l3**2 - x**2 - y**2) / (2 * l2 * l3))
+                self.theta[2] = PI - beta
+                c2 = np.cos(self.theta[1])
+                s2 = np.sin(self.theta[1])
+
+                alpha = atan2((l3 * s2), (l2 + l3 * c2))
+                gamma = atan2(y, x)
+                self.theta[1] = gamma - alpha
+
+                # Calculate theta 3 
+                PEE = [x,y,z]
+                k = [0,0,1]
+                R5 = "GET"
+                #Pwrist = PEE - l4 - l5 * R5 @ k
+            
+
+
+            elif soln == 1:
+                # Alternate solution for theta_1 and theta_2
+                print("hi")
+
+            else:
+                raise ValueError("Invalid IK solution specified!")
+
+            # Check joint limits and ensure validity
+            if not check_joint_limits(self.theta, self.theta_limits):
+                print(
+                    f"\n [ERROR] Joint limits exceeded! \n \
+                      Desired joints are {self.theta} \n \
+                      Joint limits are {self.theta_limits}"
+                )
+                raise ValueError
+
+
+        # Recalculate Forward Kinematics to update the robot's configuration
+        self.calc_forward_kinematics(self.theta, radians=True)
 
         ########################################
 
