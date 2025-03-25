@@ -86,7 +86,6 @@ class Robot:
             numerical (bool, optional): Whether to use numerical inverse kinematics.
         """
 
-
         if pose is not None:  # Inverse kinematics case
             if not numerical:
                 self.robot.calc_inverse_kinematics(pose, soln=soln)
@@ -231,17 +230,17 @@ class Robot:
 
         # add text at bottom of window
         pose_text = "End-effector Pose:      [ "
-        pose_text += f"X: {round(EE.x,2)},  "
-        pose_text += f"Y: {round(EE.y,2)},  "
-        pose_text += f"Z: {round(EE.z,2)},  "
-        pose_text += f"RotX: {round(EE.rotx,2)},  "
-        pose_text += f"RotY: {round(EE.roty,2)},  "
-        pose_text += f"RotZ: {round(EE.rotz,2)}  "
+        pose_text += f"X: {round(EE.x,6)},  "
+        pose_text += f"Y: {round(EE.y,6)},  "
+        pose_text += f"Z: {round(EE.z,6)},  "
+        pose_text += f"RotX: {round(EE.rotx,6)},  "
+        pose_text += f"RotY: {round(EE.roty,6)},  "
+        pose_text += f"RotZ: {round(EE.rotz,6)}  "
         pose_text += " ]"
 
         theta_text = "Joint Positions (deg/m):     ["
         for i in range(self.num_joints):
-            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),2)}, "
+            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),6)}, "
         theta_text += " ]"
 
         textstr = pose_text + "\n" + theta_text
@@ -891,9 +890,9 @@ class FiveDOFRobot:
 
         self.DH = [
             [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1] - np.pi/2, 0, self.l2, np.pi],
+            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
-            [self.theta[3] + np.pi/2, 0, 0, np.pi / 2],
+            [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
             [self.theta[4], self.l4 + self.l5, 0, 0],
         ]
 
@@ -956,110 +955,152 @@ class FiveDOFRobot:
         ########################################
 
         # insert your code here
-        x, y, z = EE.x, EE.y, EE.z
+        # Solve theta 1
+        # multiply wrist pos * H_6_0
+
+        # we have end effector pos and rotation (frame)
+        # euler to rotm to make the DH matrix using ^
+        # Inverse that so you have H_6_0
+        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
+        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
+        # then we can 
+
+
+        x, y = EE.x, EE.y
+        theta_1 = np.arctan2(y, x)
+        self.theta[0] = theta_1
+
+        # Find rotation of EE matrix
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
+        print(f"{EE_rot=}")
 
-        l1, l2, l3, l4, l5 = self.l1, self.l2, self.l3, self.l4, self.l5
+        # Find Position of joint 3 in base frame
+        P_EE = np.array([EE.x, EE.y, EE.z])
+        k = np.array([0, 0, 1])
+        print(f"{EE_rot @ k=}")
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
 
-        # Slightly perturb the robot from singularity at zero configuration
-        if all(th == 0.0 for th in self.theta):
-            self.theta = [
-                self.theta[i] + np.random.rand() * 0.01 for i in range(self.num_dof)
-            ]
+        print(f"{P_3=}")
+        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
 
-        try:
-            # Select inverse kinematics solution
-            print(f"{self.T_ee=}")
-            print(f"{self.T_ee[0,3]=}")
-            print((l5 + l4) * self.T_ee[0, 3])
-            r5 = EE_rot
-            ee_pos = [x, y, z]
-            k = [0, 0, 1]
-            p_wrist = ee_pos - ((l4 + l5) * (r5 @ k)) #THIS IS NOT?!? CORRECT
-            print(((l4 + l5) * (r5 @ k)))
-            print(f"{p_wrist=}")
-            # x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
-            # y3 = y - (l5 + l4) * self.T_ee[1, 3]
-            # z3 = z - (l5 + l4) * self.T_ee[2, 3]
+        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
+        P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
+        L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
+        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
+        alpha = np.arctan2(delta_z, delta_x)
+        phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
+        theta_3 = np.pi = phi
+        gamma = self.l3 * sin(theta_3)
+        beta = np.arcsin(gamma / L)
+        theta_2 = alpha - beta
+        self.theta[1], self.theta[2] = theta_2, theta_3
+        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        #     x, y, z = EE.x, EE.y, EE.z
+        #     EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        #     EE_rot = euler_to_rotm(EE_euler)
 
-            x3 = p_wrist[0]
-            y3 = p_wrist[1]
-            z3 = p_wrist[2] - l1
+        #     l1, l2, l3, l4, l5 = self.l1, self.l2, self.l3, self.l4, self.l5
 
-            # this seems funky
-            # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
-            l = x3**2 + y3**2 + (z3 - l1)**2
-            print(f"{l=}")
-            if soln == 0:
-                # self.thetas = .....
-                # correct ???
-                self.theta[0] = atan2(y, x)
-                delta_a = np.sqrt(x**2 + y**2)
-                delta_z = z - l1
-                alpha = atan2(delta_z, delta_a)
-                
-                print(f"{(l2**2 + l3**2 - l**2) / (2 * l2 * l3)=}")
-                phi = np.arccos(sqrt(l2**2 + l3**2 - l**2) / (2 * l2 * l3))
-                self.theta[2] = np.pi - phi
-                print(f"{self.theta[2]=}")
+        #     # Slightly perturb the robot from singularity at zero configuration
+        #     if all(th == 0.0 for th in self.theta):
+        #         self.theta = [
+        #             self.theta[i] + np.random.rand() * 0.01 for i in range(self.num_dof)
+        #         ]
 
-                r = l3 * sin(self.theta[2])
-                print(f"{(r / l)=}")
-                beta = np.arcsin(r / l)
-                self.theta[1] = alpha - beta
+        #     try:
+        #         # Select inverse kinematics solution
+        #         print(f"{self.T_ee=}")
+        #         print(f"{self.T_ee[0,3]=}")
+        #         print((l5 + l4) * self.T_ee[0, 3])
+        #         r5 = EE_rot
+        #         ee_pos = [x, y, z]
+        #         k = [0, 0, 1]
+        #         p_wrist = ee_pos - ((l4 + l5) * (r5 @ k)) #THIS IS NOT?!? CORRECT
+        #         print(((l4 + l5) * (r5 @ k)))
+        #         print(f"{p_wrist=}")
+        #         # x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
+        #         # y3 = y - (l5 + l4) * self.T_ee[1, 3]
+        #         # z3 = z - (l5 + l4) * self.T_ee[2, 3]
 
-                # find R_0_3
-                R_0_3 = self.T[0] @ self.T[1] @ self.T[2]
-                # find R_0_5
-                R_0_5 = R_0_3 @ self.T[3] @ self.T[4]
-                R_3_5 = np.matrix_transpose(R_0_3) @ R_0_5
-                f = R_3_5[1, 2]
-                self.theta[3] = np.arccos(f)
-                h = R_3_5[2, 1]
-                self.theta[4] = np.arccos(h)
-                print(f"{np.rad2deg(self.theta)=}")
-                # multiply R_0_3)T R_0_5 = R_3_5
-                # f = R_3_5[1,2]
-                # self.theta[3] = f
+        #         x3 = p_wrist[0]
+        #         y3 = p_wrist[1]
+        #         z3 = p_wrist[2] - l1
 
-            elif soln == 1:
-                # Alternate solution for theta_1 and theta_2
-                self.theta[0] = atan2(y / x) + PI
+        #         # this seems funky
+        #         # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
+        #         l = x3**2 + y3**2 + (z3 - l1)**2
+        #         print(f"{l=}")
+        #         if soln == 0:
+        #             # self.thetas = .....
+        #             # correct ???
+        #             self.theta[0] = atan2(y, x)
+        #             delta_a = np.sqrt(x**2 + y**2)
+        #             delta_z = z - l1
+        #             alpha = atan2(delta_z, delta_a)
 
-                # self.thetas = .....
+        #             print(f"{(l2**2 + l3**2 - l**2) / (2 * l2 * l3)=}")
+        #             phi = np.arccos(sqrt(l2**2 + l3**2 - l**2) / (2 * l2 * l3))
+        #             self.theta[2] = np.pi - phi
+        #             print(f"{self.theta[2]=}")
 
-            else:
-                raise ValueError("Invalid IK solution specified!")
+        #             r = l3 * sin(self.theta[2])
+        #             print(f"{(r / l)=}")
+        #             beta = np.arcsin(r / l)
+        #             self.theta[1] = alpha - beta
 
-            # Check joint limits and ensure validity
-            if not check_joint_limits(self.theta, self.theta_limits):
-                print(
-                    f"\n [ERROR] Joint limits exceeded! \n \
-                      Desired joints are {self.theta} \n \
-                      Joint limits are {self.theta_limits}"
-                )
-                raise ValueError
+        #             # find R_0_3
+        #             R_0_3 = self.T[0] @ self.T[1] @ self.T[2]
+        #             # find R_0_5
+        #             R_0_5 = R_0_3 @ self.T[3] @ self.T[4]
+        #             R_3_5 = np.matrix_transpose(R_0_3) @ R_0_5
+        #             f = R_3_5[1, 2]
+        #             self.theta[3] = np.arccos(f)
+        #             h = R_3_5[2, 1]
+        #             self.theta[4] = np.arccos(h)
+        #             print(f"{np.rad2deg(self.theta)=}")
+        #             # multiply R_0_3)T R_0_5 = R_3_5
+        #             # f = R_3_5[1,2]
+        #             # self.theta[3] = f
 
-        except Exception as e:
-            print(f"Error in Inverse Kinematics: {e}")
-            return
+        #         elif soln == 1:
+        #             # Alternate solution for theta_1 and theta_2
+        #             self.theta[0] = atan2(y / x) + PI
 
-        # Recalculate Forward Kinematics to update the robot's configuration
-        self.calc_forward_kinematics(self.theta, radians=True)
+        #             # self.thetas = .....
 
-        ########################################
+        #         else:
+        #             raise ValueError("Invalid IK solution specified!")
 
-        ########################################
+        #         # Check joint limits and ensure validity
+        #         if not check_joint_limits(self.theta, self.theta_limits):
+        #             print(
+        #                 f"\n [ERROR] Joint limits exceeded! \n \
+        #                   Desired joints are {self.theta} \n \
+        #                   Joint limits are {self.theta_limits}"
+        #             )
+        #             raise ValueError
 
-    def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
-        """Calculate numerical inverse kinematics based on input coordinates."""
+        #     except Exception as e:
+        #         print(f"Error in Inverse Kinematics: {e}")
+        #         return
 
-        ########################################
+        #     # Recalculate Forward Kinematics to update the robot's configuration
+        #     self.calc_forward_kinematics(self.theta, radians=True)
 
-        # insert your code here
+        #     ########################################
 
-        ########################################
+        #     ########################################
+
+        # def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
+        #     """Calculate numerical inverse kinematics based on input coordinates."""
+
+        #     ########################################
+
+        #     # insert your code here
+
+        #     ########################################
         self.calc_forward_kinematics(self.theta, radians=True)
 
     def calc_velocity_kinematics(self, vel: list):
@@ -1128,5 +1169,5 @@ class FiveDOFRobot:
         )
         theta_text = "Joint Positions (deg/m):     ["
         for i in range(5):
-            theta_text += f" {round(np.rad2deg(self.theta[i]),2)}, "
+            theta_text += f" {round(np.rad2deg(self.theta[i]),6)}, "
         theta_text += " ]"
