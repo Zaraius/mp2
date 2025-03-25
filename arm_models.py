@@ -86,11 +86,7 @@ class Robot:
             numerical (bool, optional): Whether to use numerical inverse kinematics.
         """
 
-        theta_text = "Joint Positions (deg/m):     ["
-        for i in range(5):
-            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),2)}, "
-        theta_text += " ]"
-        print(theta_text)
+
         if pose is not None:  # Inverse kinematics case
             if not numerical:
                 self.robot.calc_inverse_kinematics(pose, soln=soln)
@@ -344,6 +340,7 @@ class TwoDOFRobot:
             if soln == 0:
                 # Solution 0: Calculate joint angles using cosine rule
                 beta = np.arccos((l1**2 + l2**2 - x**2 - y**2) / (2 * l1 * l2))
+                print(f"{beta=}")
                 self.theta[1] = PI - beta
                 c2 = np.cos(self.theta[1])
                 s2 = np.sin(self.theta[1])
@@ -992,19 +989,24 @@ class FiveDOFRobot:
 
             # this seems funky
             # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
-            l = sqrt(x3**2 + y3**2 + z3**2)
+            l = sqrt(x3**2 + y3**2 + (z3 - l1)**2)
             print(f"{l=}")
             if soln == 0:
                 # self.thetas = .....
                 # correct ???
                 self.theta[0] = atan2(y, x)
+                delta_a = np.sqrt(x**2 + y**2)
+                delta_z = z - l1
+                alpha = atan2(delta_z, delta_a)
+                
                 print(f"{(l2**2 + l3**2 - l**2) / (2 * l2 * l3)=}")
-                phi = np.arccos((l2**2 + l3**2 - l**2) / (2 * l2 * l3))
-                self.theta[2] = PI - phi
+                phi = np.arccos(sqrt(l2**2 + l3**2 - l**2) / (2 * l2 * l3))
+                self.theta[2] = np.pi - phi
+                print(f"{self.theta[2]=}")
+
                 r = l3 * sin(self.theta[2])
                 print(f"{(r / l)=}")
                 beta = np.arcsin(r / l)
-                alpha = atan2((z - z3), (x - x3))
                 self.theta[1] = alpha - beta
 
                 # find R_0_3
