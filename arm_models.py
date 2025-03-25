@@ -879,11 +879,11 @@ class FiveDOFRobot:
         # Degree rotations converted to radians
         # theta, d, a, alpha
         self.DH = [
-            [self.theta[0], self.l1, 0, np.pi / 2],
-            [self.theta[1], 0, self.l2, np.pi],
+            [self.theta[0], self.l1, 0, -np.pi / 2],
+            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
-            [self.theta[3], 0, self.l4, -np.pi / 2],
-            [self.theta[4], self.l5, 0, 0],
+            [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
+            [self.theta[4], self.l4 + self.l5, 0, 0],
         ]
         self.T = np.stack(
             [
@@ -946,27 +946,36 @@ class FiveDOFRobot:
         self.theta[0] = theta_1
 
         # Find rotation of EE matrix
-        EE_euler = [EE.rotx, EE.roty, EE.rotz]
-        EE_rot = euler_to_rotm(EE_euler)
+        EE_euler = (EE.rotx, EE.roty, EE.rotz)
+        EE_rot = np.array(euler_to_rotm(EE_euler), float)
 
         # Find Position of joint 3 in base frame
-        P_EE = np.array([EE.x, EE.y, EE.z])
-        k = np.array([0, 0, 1])
-        P_3 = P_EE - (self.l4 + self.l5) * EE_rot @ k
+        # l1 = .3, l5 = .12
+        P_EE = np.array([EE.x, EE.y, EE.z], float)
+        print(f"position EE is: {P_EE}")
+        k = np.array([0, 0, 1], float)
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+        print(f"position of wrist is: {P_3}")
 
-        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
+        # Solve decoupled    kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        delta_a = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
-        alpha = np.arctan2(delta_z, delta_x)
+        alpha = np.arctan2(delta_z, delta_a)
+        print(f"delta a and z and L are {delta_a}, {delta_z}, {L}")
+        print(
+            f"phi is arccos of: {(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)}"
+        )
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
-        theta_3 = np.pi = phi
+        theta_3 = np.pi - phi
         gamma = self.l3 * sin(theta_3)
+        # print(f"denominator of beta is {L}")
         beta = np.arcsin(gamma / L)
         theta_2 = alpha - beta
+        print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
         self.theta[1], self.theta[2] = theta_2, theta_3
-        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
 
         ########################################
 
