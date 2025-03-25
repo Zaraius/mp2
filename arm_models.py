@@ -946,7 +946,7 @@ class FiveDOFRobot:
         self.theta[0] = theta_1
 
         # Find rotation of EE matrix
-        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_euler = [EE.rotz, EE.roty, EE.rotx]
         EE_rot = euler_to_rotm(EE_euler)
 
         # Find Position of joint 3 in base frame
