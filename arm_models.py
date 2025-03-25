@@ -989,7 +989,7 @@ class FiveDOFRobot:
 
             # this seems funky
             # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
-            l = sqrt(x3**2 + y3**2 + (z3 - l1)**2)
+            l = x3**2 + y3**2 + (z3 - l1)**2
             print(f"{l=}")
             if soln == 0:
                 # self.thetas = .....
