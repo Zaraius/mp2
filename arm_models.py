@@ -965,7 +965,18 @@ class FiveDOFRobot:
         # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
         # then we can 
 
+        EE_rot = euler_to_rotm(EE_euler)
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
 
+        H = np.block([[EE_rot, EE_euler], 
+              [np.array([[0, 0, 0, 1]])]])
+        
+        hInv = np.linalg.inv(H)
+
+        wrist = hInv @ [0, 0,(self.l4 + self.l5), 1]
+
+        print(wrist)
+        
         x, y = EE.x, EE.y
         theta_1 = np.arctan2(y, x)
         self.theta[0] = theta_1
@@ -997,6 +1008,7 @@ class FiveDOFRobot:
         theta_2 = alpha - beta
         self.theta[1], self.theta[2] = theta_2, theta_3
         print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        
         #     x, y, z = EE.x, EE.y, EE.z
         #     EE_euler = [EE.rotx, EE.roty, EE.rotz]
         #     EE_rot = euler_to_rotm(EE_euler)
