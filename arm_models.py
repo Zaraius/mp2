@@ -946,7 +946,7 @@ class FiveDOFRobot:
         self.theta[0] = theta_1
 
         # Find rotation of EE matrix
-        EE_euler = [EE.rotz, EE.roty, EE.rotx]
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
 
         # Find Position of joint 3 in base frame
@@ -961,12 +961,14 @@ class FiveDOFRobot:
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
         alpha = np.arctan2(delta_z, delta_x)
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
-        theta_3 = np.pi = phi
+        theta_3 = np.pi - phi
         gamma = self.l3 * sin(theta_3)
         beta = np.arcsin(gamma / L)
         theta_2 = alpha - beta
         self.theta[1], self.theta[2] = theta_2, theta_3
         print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+
+        self.calc_forward_kinematics()
 
         ########################################
 
