@@ -894,7 +894,7 @@ class FiveDOFRobot:
 
         self.DH = [
             [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1] - 90, 0, self.l2, np.pi],
+            [self.theta[1] - np.pi/2, 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
             [self.theta[3] + np.pi/2, 0, 0, np.pi / 2],
             [self.theta[4], self.l4 + self.l5, 0, 0],
