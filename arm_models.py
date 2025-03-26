@@ -229,18 +229,19 @@ class Robot:
         self.draw_ref_line([EE.x, EE.y, EE.z], self.sub1, ref="xyz")
 
         # add text at bottom of window
-        pose_text = "End-effector Pose:      [ "
-        pose_text += f"X: {round(EE.x,6)},  "
-        pose_text += f"Y: {round(EE.y,6)},  "
-        pose_text += f"Z: {round(EE.z,6)},  "
-        pose_text += f"RotX: {round(EE.rotx,6)},  "
-        pose_text += f"RotY: {round(EE.roty,6)},  "
-        pose_text += f"RotZ: {round(EE.rotz,6)}  "
+        pose_text = "End-effector Pose:[ "
+        pose_text += f"X: {round(EE.x,4)},  "
+        pose_text += f"Y: {round(EE.y,4)},  "
+        pose_text += f"Z: {round(EE.z,4)},  "
+        pose_text += f"RotX: {round(EE.rotx,4)},  "
+        pose_text += f"RotY: {round(EE.roty,4)},  "
+        pose_text += f"RotZ: {round(EE.rotz,4)}  "
         pose_text += " ]"
 
         theta_text = "Joint Positions (deg/m):     ["
+        print(f"{self.robot.theta}")
         for i in range(self.num_joints):
-            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),6)}, "
+            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),4)}, "
         theta_text += " ]"
 
         textstr = pose_text + "\n" + theta_text
@@ -822,8 +823,7 @@ class ScaraRobot:
         self.ee.y = self.points[-1][1]
         self.ee.z = self.points[-1][2]
         rpy = rotm_to_euler(self.T_ee[:3, :3])
-        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy
-
+        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy[0], rpy[1], rpy[2]
         # EE coordinate axes
         self.EE_axes = np.zeros((3, 3))
         self.EE_axes[0] = self.T_ee[:3, 0] * 0.075 + self.points[-1][0:3]
@@ -890,7 +890,7 @@ class FiveDOFRobot:
 
         self.DH = [
             [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
+            [self.theta[1] - np.pi/2 , 0, self.l2, np.pi],
             [self.theta[2], 0, self.l3, np.pi],
             [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
             [self.theta[4], self.l4 + self.l5, 0, 0],
@@ -950,11 +950,16 @@ class FiveDOFRobot:
             EE: EndEffector object containing desired position and orientation.
             soln: Optional parameter for multiple solutions (not implemented).
         """
+        # KENE SAID CALCULATE ALL 8 solutions and find 4 that are feasible
+        # theta 1 has 2 solutions
+        # theta 2,3 have 2 solutions (elbow up, elbow down)
+        # r has 2 solutions {r = -sqrt(x^2 + y^2), r = +sqrt(x^2 + y^2)}
         ########################################
 
         ########################################
 
         # insert your code here
+        # FIX FORWARD KINEMATICS TO BE STRAIGHT UP
         # Solve theta 1
         # multiply wrist pos * H_6_0
 
@@ -963,20 +968,24 @@ class FiveDOFRobot:
         # Inverse that so you have H_6_0
         # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
         # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
-        # then we can 
+        # then we can
 
-        EE_rot = euler_to_rotm(EE_euler)
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
 
-        H = np.block([[EE_rot, EE_euler], 
-              [np.array([[0, 0, 0, 1]])]])
-        
+        H = np.zeros((4, 4))
+        H[:3, :3] = EE_rot
+        H[:3, 3] = [EE.x, EE.y, EE.z]
+        H[3, :] = [0, 0, 0, 1]
+        # H = np.block([[EE_rot, EE_euler],
+        #       [np.array([[0, 0, 0, 1]])]])
+        print(f"{H=}")
         hInv = np.linalg.inv(H)
 
-        wrist = hInv @ [0, 0,(self.l4 + self.l5), 1]
+        wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
 
         print(wrist)
-        
+
         x, y = EE.x, EE.y
         theta_1 = np.arctan2(y, x)
         self.theta[0] = theta_1
@@ -998,9 +1007,11 @@ class FiveDOFRobot:
         # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
+        print(f"L = {L} l2 {self.l2} l3 {self.l3}")
         delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
         alpha = np.arctan2(delta_z, delta_x)
+        print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
         theta_3 = np.pi = phi
         gamma = self.l3 * sin(theta_3)
@@ -1008,7 +1019,7 @@ class FiveDOFRobot:
         theta_2 = alpha - beta
         self.theta[1], self.theta[2] = theta_2, theta_3
         print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
-        
+
         #     x, y, z = EE.x, EE.y, EE.z
         #     EE_euler = [EE.rotx, EE.roty, EE.rotz]
         #     EE_rot = euler_to_rotm(EE_euler)
@@ -1172,7 +1183,7 @@ class FiveDOFRobot:
 
         # Extract and assign the RPY (roll, pitch, yaw) from the rotation matrix
         rpy = rotm_to_euler(self.T_ee[:3, :3])
-        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy[2], rpy[1], rpy[0]
+        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy[0], rpy[1], rpy[2]
 
         # Calculate the EE axes in space (in the base frame)
         self.EE = [self.ee.x, self.ee.y, self.ee.z]
@@ -1181,5 +1192,5 @@ class FiveDOFRobot:
         )
         theta_text = "Joint Positions (deg/m):     ["
         for i in range(5):
-            theta_text += f" {round(np.rad2deg(self.theta[i]),6)}, "
+            theta_text += f" {round(np.rad2deg(self.theta[i]),4)}, "
         theta_text += " ]"
