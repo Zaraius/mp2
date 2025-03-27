@@ -985,6 +985,11 @@ class FiveDOFRobot:
         wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
 
         print(wrist)
+        
+        # account for the 180 flip on theta 3 
+        # account the arm going straight up (in the start) 
+        # account for all solutions 
+        
 
         x, y = EE.x, EE.y
         theta_1 = np.arctan2(y, x)
