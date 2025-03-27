@@ -93,6 +93,7 @@ class Robot:
             soln (int, optional): The inverse kinematics solution to use (0 or 1).
             numerical (bool, optional): Whether to use numerical inverse kinematics.
         """
+
         if pose is not None:  # Inverse kinematics case
             if not numerical:
                 self.robot.calc_inverse_kinematics(pose, soln=soln)
@@ -261,18 +262,19 @@ class Robot:
         self.draw_ref_line([EE.x, EE.y, EE.z], self.sub1, ref="xyz")
 
         # add text at bottom of window
-        pose_text = "End-effector Pose:      [ "
-        pose_text += f"X: {round(EE.x,2)},  "
-        pose_text += f"Y: {round(EE.y,2)},  "
-        pose_text += f"Z: {round(EE.z,2)},  "
-        pose_text += f"RotX: {round(EE.rotx,2)},  "
-        pose_text += f"RotY: {round(EE.roty,2)},  "
-        pose_text += f"RotZ: {round(EE.rotz,2)}  "
+        pose_text = "End-effector Pose:[ "
+        pose_text += f"X: {round(EE.x,4)},  "
+        pose_text += f"Y: {round(EE.y,4)},  "
+        pose_text += f"Z: {round(EE.z,4)},  "
+        pose_text += f"RotX: {round(EE.rotx,4)},  "
+        pose_text += f"RotY: {round(EE.roty,4)},  "
+        pose_text += f"RotZ: {round(EE.rotz,4)}  "
         pose_text += " ]"
 
         theta_text = "Joint Positions (deg/m):     ["
+        print(f"{self.robot.theta}")
         for i in range(self.num_joints):
-            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),2)}, "
+            theta_text += f" {round(np.rad2deg(self.robot.theta[i]),4)}, "
         theta_text += " ]"
 
         textstr = pose_text + "\n" + theta_text
@@ -379,6 +381,7 @@ class TwoDOFRobot():
             if soln == 0:
                 # Solution 0: Calculate joint angles using cosine rule
                 beta = np.arccos((l1**2 + l2**2 - x**2 - y**2) / (2 * l1 * l2))
+                print(f"{beta=}")
                 self.theta[1] = PI - beta
                 c2 = np.cos(self.theta[1])
                 s2 = np.sin(self.theta[1])
@@ -861,8 +864,7 @@ class ScaraRobot:
         self.ee.y = self.points[-1][1]
         self.ee.z = self.points[-1][2]
         rpy = rotm_to_euler(self.T_ee[:3, :3])
-        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy
-
+        self.ee.rotx, self.ee.roty, self.ee.rotz = rpy[0], rpy[1], rpy[2]
         # EE coordinate axes
         self.EE_axes = np.zeros((3, 3))
         self.EE_axes[0] = self.T_ee[:3, 0] * 0.075 + self.points[-1][0:3]
@@ -885,31 +887,40 @@ class FiveDOFRobot:
         DH: Denavit-Hartenberg parameters for each joint.
         T: Transformation matrices for each joint.
     """
-
+    
     def __init__(self):
         """Initialize the robot parameters and joint limits."""
         # Link lengths
-        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
-
+        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
+        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105 # from hardware measurements
+        
         # Joint angles (initialized to zero)
         self.theta = [0, 0, 0, 0, 0]
-
+        
         # Joint limits (in radians)
         self.theta_limits = [
-            [-np.pi, np.pi],
-            [-np.pi / 3, np.pi],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 4],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 12],
-            [-np.pi, np.pi],
+            [-np.pi, np.pi], 
+            [-np.pi/3, np.pi], 
+            [-np.pi+np.pi/12, np.pi-np.pi/4], 
+            [-np.pi+np.pi/12, np.pi-np.pi/12], 
+            [-np.pi, np.pi]
         ]
 
+        self.thetadot_limits = [
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2]
+        ]
+        
         # End-effector object
         self.ee = EndEffector()
-
+        
         # Robot's points
         self.num_dof = 5
         self.points = [None] * (self.num_dof + 1)
-
+        
         # Denavit-Hartenberg parameters and transformation matrices
         self.DH = np.zeros((5, 4))
         self.T = np.zeros((self.num_dof, 4, 4))
@@ -943,32 +954,32 @@ class FiveDOFRobot:
     def calc_forward_kinematics(self, theta: list, radians=False):
         """
         Calculate forward kinematics based on the provided joint angles.
-
+        
         Args:
             theta: List of joint angles (in degrees or radians).
             radians: Boolean flag to indicate if input angles are in radians.
         """
-        ########################################
+        if not radians:
+            # Convert degrees to radians
+            self.theta = np.deg2rad(theta)
+        else:
+            self.theta = theta
+        
+        # Apply joint limits
+        self.theta = [np.clip(th, self.theta_limits[i][0], self.theta_limits[i][1]) 
+                      for i, th in enumerate(self.theta)]
 
-        convert_deg = np.pi / 180
-        if radians:
-            convert_deg = 1
-        for i in range(len(theta)):
-            self.DH[i][0] = theta[i] * convert_deg
+        # Set the Denavit-Hartenberg parameters for each joint
+        self.DH[0] = [self.theta[0], self.l1, 0, np.pi/2]
+        self.DH[1] = [self.theta[1] + np.pi/2, 0, self.l2, np.pi]
+        self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
+        self.DH[3] = [self.theta[3] - np.pi/2, 0, 0, -np.pi/2]
+        self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
 
-        self.T = np.stack(
-            [
-                dh_to_matrix(self.DH[0]),
-                dh_to_matrix(self.DH[1]),
-                dh_to_matrix(self.DH[2]),
-                dh_to_matrix(self.DH[3]),
-                dh_to_matrix(self.DH[4]),
-            ],
-            axis=0,
-        )
-
-        ########################################
-
+        # Compute the transformation matrices
+        for i in range(self.num_dof):
+            self.T[i] = dh_to_matrix(self.DH[i])
+        
         # Calculate robot points (positions of joints)
         self.calc_robot_points()
 
@@ -980,6 +991,10 @@ class FiveDOFRobot:
             EE: EndEffector object containing desired position and orientation.
             soln: Optional parameter for multiple solutions (not implemented).
         """
+        # KENE SAID CALCULATE ALL 8 solutions and find 4 that are feasible
+        # theta 1 has 2 solutions
+        # theta 2,3 have 2 solutions (elbow up, elbow down)
+        # r has 2 solutions {r = -sqrt(x^2 + y^2), r = +sqrt(x^2 + y^2)}
         ########################################
         # Solve theta 1
         x, y = EE.x, EE.y
@@ -1026,43 +1041,336 @@ class FiveDOFRobot:
         ########################################
 
         # insert your code here
+        # FIX FORWARD KINEMATICS TO BE STRAIGHT UP
+        # Solve theta 1
+        # multiply wrist pos * H_6_0
 
-        ########################################
+        # we have end effector pos and rotation (frame)
+        # euler to rotm to make the DH matrix using ^
+        # Inverse that so you have H_6_0
+        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
+        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
+        # then we can
+
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+
+        H = np.zeros((4, 4))
+        H[:3, :3] = EE_rot
+        H[:3, 3] = [EE.x, EE.y, EE.z]
+        H[3, :] = [0, 0, 0, 1]
+        # H = np.block([[EE_rot, EE_euler],
+        #       [np.array([[0, 0, 0, 1]])]])
+        print(f"{H=}")
+        hInv = np.linalg.inv(H)
+
+        wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
+
+        print(wrist)
+
+        x, y = EE.x, EE.y
+        theta_1 = [np.arctan2(y, x), np.arctan2(y,x) + np.pi]
+        # self.theta[0] = theta_1
+        # check thetas with forward kinematics and see if it actually reaches desired position correct
+
+        # Find rotation of EE matrix
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+        print(f"{EE_rot=}")
+
+        # Find Position of joint 3 in base frame
+        P_EE = np.array([EE.x, EE.y, EE.z])
+        k = np.array([0, 0, 1])
+        print(f"{EE_rot @ k=}")
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+
+        print(f"{P_3=}")
+        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
+
+        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
+        P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
+        L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
+        print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
+        alpha = np.arctan2(delta_z, delta_x)
+        print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
+        phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
+        theta_3 = np.pi = phi
+        gamma = self.l3 * sin(theta_3)
+        beta = np.arcsin(gamma / L)
+        theta_2 = alpha - beta
+        self.theta[1], self.theta[2] = theta_2, theta_3
+        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+
+        #     x, y, z = EE.x, EE.y, EE.z
+        #     EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        #     EE_rot = euler_to_rotm(EE_euler)
+
+        #     l1, l2, l3, l4, l5 = self.l1, self.l2, self.l3, self.l4, self.l5
+
+        #     # Slightly perturb the robot from singularity at zero configuration
+        #     if all(th == 0.0 for th in self.theta):
+        #         self.theta = [
+        #             self.theta[i] + np.random.rand() * 0.01 for i in range(self.num_dof)
+        #         ]
+
+        #     try:
+        #         # Select inverse kinematics solution
+        #         print(f"{self.T_ee=}")
+        #         print(f"{self.T_ee[0,3]=}")
+        #         print((l5 + l4) * self.T_ee[0, 3])
+        #         r5 = EE_rot
+        #         ee_pos = [x, y, z]
+        #         k = [0, 0, 1]
+        #         p_wrist = ee_pos - ((l4 + l5) * (r5 @ k)) #THIS IS NOT?!? CORRECT
+        #         print(((l4 + l5) * (r5 @ k)))
+        #         print(f"{p_wrist=}")
+        #         # x3 = x - (l5 + l4) * self.T_ee[0:2, 3]
+        #         # y3 = y - (l5 + l4) * self.T_ee[1, 3]
+        #         # z3 = z - (l5 + l4) * self.T_ee[2, 3]
+
+        #         x3 = p_wrist[0]
+        #         y3 = p_wrist[1]
+        #         z3 = p_wrist[2] - l1
+
+        #         # this seems funky
+        #         # l = sqrt((x - x3) ** 2 + (y - y3) ** 2 + (z - z3 + l1) ** 2)
+        #         l = x3**2 + y3**2 + (z3 - l1)**2
+        #         print(f"{l=}")
+        #         if soln == 0:
+        #             # self.thetas = .....
+        #             # correct ???
+        #             self.theta[0] = atan2(y, x)
+        #             delta_a = np.sqrt(x**2 + y**2)
+        #             delta_z = z - l1
+        #             alpha = atan2(delta_z, delta_a)
+
+        #             print(f"{(l2**2 + l3**2 - l**2) / (2 * l2 * l3)=}")
+        #             phi = np.arccos(sqrt(l2**2 + l3**2 - l**2) / (2 * l2 * l3))
+        #             self.theta[2] = np.pi - phi
+        #             print(f"{self.theta[2]=}")
+
+        #             r = l3 * sin(self.theta[2])
+        #             print(f"{(r / l)=}")
+        #             beta = np.arcsin(r / l)
+        #             self.theta[1] = alpha - beta
+
+        #             # find R_0_3
+        #             R_0_3 = self.T[0] @ self.T[1] @ self.T[2]
+        #             # find R_0_5
+        #             R_0_5 = R_0_3 @ self.T[3] @ self.T[4]
+        #             R_3_5 = np.matrix_transpose(R_0_3) @ R_0_5
+        #             f = R_3_5[1, 2]
+        #             self.theta[3] = np.arccos(f)
+        #             h = R_3_5[2, 1]
+        #             self.theta[4] = np.arccos(h)
+        #             print(f"{np.rad2deg(self.theta)=}")
+        #             # multiply R_0_3)T R_0_5 = R_3_5
+        #             # f = R_3_5[1,2]
+        #             # self.theta[3] = f
+
+        #         elif soln == 1:
+        #             # Alternate solution for theta_1 and theta_2
+        #             self.theta[0] = atan2(y / x) + PI
+
+        #             # self.thetas = .....
+
+        #         else:
+        #             raise ValueError("Invalid IK solution specified!")
+
+        #         # Check joint limits and ensure validity
+        #         if not check_joint_limits(self.theta, self.theta_limits):
+        #             print(
+        #                 f"\n [ERROR] Joint limits exceeded! \n \
+        #                   Desired joints are {self.theta} \n \
+        #                   Joint limits are {self.theta_limits}"
+        #             )
+        #             raise ValueError
+
+        #     except Exception as e:
+        #         print(f"Error in Inverse Kinematics: {e}")
+        #         return
+
+        #     # Recalculate Forward Kinematics to update the robot's configuration
+        #     self.calc_forward_kinematics(self.theta, radians=True)
+
+        #     ########################################
+
+        #     ########################################
+
+        # def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
+        #     """Calculate numerical inverse kinematics based on input coordinates."""
+
+        #     ########################################
+
+        #     # insert your code here
+
+        #     ########################################
         self.calc_forward_kinematics(self.theta, radians=True)
 
     def calc_velocity_kinematics(self, vel: list):
         """
         Calculate the joint velocities required to achieve the given end-effector velocity.
-
+        
         Args:
             vel: Desired end-effector velocity (3x1 vector).
         """
-        ########################################
+        # Avoid singularity by perturbing joint angles slightly
+        if all(th == 0.0 for th in self.theta):
+            self.theta = [th + np.random.rand() * 0.01 for th in self.theta]
 
-        T_cumulative = [np.eye(4)]
-        for i in range(self.num_dof):
-            T_cumulative.append(T_cumulative[-1] @ self.T[i])
+        # Calculate the joint velocity using the inverse Jacobian
+        # thetadot = self.inverse_jacobian(pseudo=True) @ vel
+        thetadot = self.damped_inverse_jacobian() @ vel
 
-        d = T_cumulative[-1][:3, 3]  # distance to the EE from base
+        # (Corrective measure) Ensure joint velocities stay within limits
+        thetadot = np.clip(thetadot, [limit[0] for limit in self.thetadot_limits], [limit[1] for limit in self.thetadot_limits])
 
-        # Parse T_cumulative to define
-        for i in range(0, 5):  # in order to not get the identity matrix at 0
-            H = T_cumulative[i]
-            z_i = H[0:3, 2].flatten()  # This is equivalent to the rotation times k hat
-            r_i = (d - H[0:3, 3]).flatten()
-            self.J[i] = np.cross(z_i.flatten(), r_i.flatten())  #
+        # Update joint angles
+        self.theta[0] += 0.02 * thetadot[0]
+        self.theta[1] += 0.02 * thetadot[1]
+        self.theta[2] += 0.02 * thetadot[2]
+        self.theta[3] += 0.02 * thetadot[3]
+        self.theta[4] += 0.02 * thetadot[4]
 
-        dt = 0.02  # arbitrary time rate for testing
-        inv_J = np.linalg.pinv(self.J)
-        theta_dot = inv_J.T @ np.array(vel)
-        self.theta = self.theta + (theta_dot * dt)
-        ########################################
+        # print(f'linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
+        # print(f'thetadot (deg/s) = {[round(td,2) for td in thetadot]}')
+        # print(f'Commanded theta (deg) = {[round(th,2) for th in self.theta]}')  
 
         # Recompute robot points based on updated joint angles
         self.calc_forward_kinematics(self.theta, radians=True)
 
+    def jacobian(self, theta: list = None):
+        """
+        Compute the Jacobian matrix for the current robot configuration.
+
+        Args:
+            theta (list, optional): The joint angles for the robot. Defaults to self.theta.
+        
+        Returns:
+            Jacobian matrix (3x5).
+        """
+        # Use default values if arguments are not provided
+        if theta is None:
+            theta = self.theta
+
+        # Define DH parameters
+        DH = np.zeros((5, 4))
+        DH[0] = [theta[0], self.l1, 0, np.pi/2]
+        DH[1] = [theta[1] + np.pi/2, 0, self.l2, np.pi]
+        DH[2] = [theta[2], 0, self.l3, np.pi]
+        DH[3] = [theta[3] - np.pi/2, 0, 0, -np.pi/2]
+        DH[4] = [theta[4], self.l4 + self.l5, 0, 0]
+
+        # Compute transformation matrices
+        T = np.zeros((self.num_dof,4,4))
+        for i in range(self.num_dof):
+            T[i] = dh_to_matrix(DH[i])
+
+        # Precompute transformation matrices for efficiency
+        T_cumulative = [np.eye(4)]
+        for i in range(self.num_dof):
+            T_cumulative.append(T_cumulative[-1] @ T[i])
+
+        # Define O0 for calculations
+        O0 = np.array([0, 0, 0, 1])
+        
+        # Initialize the Jacobian matrix
+        jacobian = np.zeros((3, self.num_dof))
+
+        # Calculate the Jacobian columns
+        for i in range(self.num_dof):
+            T_curr = T_cumulative[i]
+            T_final = T_cumulative[-1]
+            
+            # Calculate position vector r
+            r = (T_final @ O0 - T_curr @ O0)[:3]
+
+            # Compute the rotation axis z
+            z = T_curr[:3, :3] @ np.array([0, 0, 1])
+
+            # Compute linear velocity part of the Jacobian
+            jacobian[:, i] = np.cross(z, r)
+
+        # Replace near-zero values with zero, primarily for debugging purposes
+        return near_zero(jacobian)
+    
+    
+    def inverse_jacobian(self, pseudo=False):
+        """
+        Compute the inverse of the Jacobian matrix using either pseudo-inverse or regular inverse.
+        
+        Args:
+            pseudo: Boolean flag to use pseudo-inverse (default is False).
+        
+        Returns:
+            The inverse (or pseudo-inverse) of the Jacobian matrix.
+        """
+
+        J = self.jacobian()
+        JT = np.transpose(J)
+        manipulability_idx = np.sqrt(np.linalg.det(J @ JT))
+
+        if pseudo:
+            return np.linalg.pinv(self.jacobian())
+        else:
+            return np.linalg.inv(self.jacobian())
+        
+        
+    def damped_inverse_jacobian(self, q = None, damping_factor=0.025):
+        if q is not None:
+            J = self.jacobian(q)
+        else:
+            J = self.jacobian()
+
+        JT = np.transpose(J)
+        I = np.eye(3)
+        return JT @ np.linalg.inv(J @ JT + (damping_factor**2)*I)
+
+
+    def dh_to_matrix(self, dh_params: list) -> np.ndarray:
+        """Converts Denavit-Hartenberg parameters to a transformation matrix.
+
+        Args:
+            dh_params (list): Denavit-Hartenberg parameters [theta, d, a, alpha].
+
+        Returns:
+            np.ndarray: A 4x4 transformation matrix.
+        """
+        theta, d, a, alpha = dh_params
+        return np.array([
+            [cos(theta), -sin(theta) * cos(alpha), sin(theta) * sin(alpha), a * cos(theta)],
+            [sin(theta), cos(theta) * cos(alpha), -cos(theta) * sin(alpha), a * sin(theta)],
+            [0, sin(alpha), cos(alpha), d],
+            [0, 0, 0, 1]
+        ])
+
+
+    def solve_forward_kinematics(self, theta: list, radians=False):
+
+        # Convert degrees to radians
+        if not radians:
+            for i in range(len(theta)):
+                theta[i] = np.deg2rad(theta[i])
+
+        # DH parameters = [theta, d, a, alpha]
+        DH = np.zeros((5, 4))
+        DH[0] = [theta[0],   self.l1,    0,       np.pi/2]
+        DH[1] = [theta[1]+np.pi/2,   0,          self.l2, np.pi]
+        DH[2] = [theta[2],   0,          self.l3, np.pi]
+        DH[3] = [theta[3]-np.pi/2,   0,          0,       -np.pi/2]
+        DH[4] = [theta[4],   self.l4+self.l5, 0, 0]
+
+        T = np.zeros((self.num_dof,4,4))
+        for i in range(self.num_dof):
+            T[i] = dh_to_matrix(DH[i])
+
+        return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @ np.array([0, 0, 0, 1])
+
+
     def calc_robot_points(self):
-        """Calculates the main arm points using the current joint angles"""
+        """ Calculates the main arm points using the current joint angles """
 
         # Initialize points[0] to the base (origin)
         self.points[0] = np.array([0, 0, 0, 1])
@@ -1077,20 +1385,16 @@ class FiveDOFRobot:
             self.points[i] = T_cumulative[i] @ self.points[0]
 
         # Calculate EE position and rotation
-        self.EE_axes = T_cumulative[-1] @ np.array(
-            [0.075, 0.075, 0.075, 1]
-        )  # End-effector axes
+        self.EE_axes = T_cumulative[-1] @ np.array([0.075, 0.075, 0.075, 1])  # End-effector axes
         self.T_ee = T_cumulative[-1]  # Final transformation matrix for EE
 
         # Set the end effector (EE) position
         self.ee.x, self.ee.y, self.ee.z = self.points[-1][:3]
-
+        
         # Extract and assign the RPY (roll, pitch, yaw) from the rotation matrix
         rpy = rotm_to_euler(self.T_ee[:3, :3])
         self.ee.rotx, self.ee.roty, self.ee.rotz = rpy[0], rpy[1], rpy[2]
 
         # Calculate the EE axes in space (in the base frame)
         self.EE = [self.ee.x, self.ee.y, self.ee.z]
-        self.EE_axes = np.array(
-            [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
-        )
+        self.EE_axes = np.array([self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)])
