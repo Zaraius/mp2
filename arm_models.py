@@ -1010,8 +1010,14 @@ class FiveDOFRobot:
         print(wrist)
 
         x, y = EE.x, EE.y
-        theta_1 = np.arctan2(y, x) + np.pi
-        self.theta[0] = theta_1 #replace this and add it to list
+        theta_1 = np.arctan2(y, x) 
+        
+        # can flip 180 degrees and the arm would reverse
+        if soln == 0: 
+            self.theta[0] = theta_1 + np.pi
+        elif soln == 1: 
+            self.theta[0] = theta_1
+
         # check thetas with forward kinematics and see if it actually reaches desired position correct
 
         # Find rotation of EE matrix
@@ -1040,13 +1046,24 @@ class FiveDOFRobot:
         theta_3 = np.pi - phi
         gamma = self.l3 * sin(theta_3)
         beta = np.arcsin(gamma / L)
-        theta_2 = alpha - beta + np.pi/2
-        theta_2 = alpha - beta + (np.pi / 2)
-        print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
-        self.theta[1], self.theta[2] = theta_2, theta_3
-        self.calc_forward_kinematics(self.theta, radians=True)
+        theta_2 = alpha - beta
+                   
+        # self.theta[0] = theta_1 + np.pi #replace this and add it to list
+        if soln == 0: 
+            self.theta[1] = (theta_2 + np.pi/2) 
+                
+            self.theta[2] = theta_3  # - np.pi
 
-        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+            
+        elif soln == 1:
+            self.theta[1] =  - alpha - beta + np.pi 
+            self.theta[2] = theta_3 
+
+        self.calc_forward_kinematics(self.theta, radians=True)
+        print(f"befoer changes theta 1, 2, 3 are {np.rad2deg(theta_1)}, {np.rad2deg(theta_2)}, {np.rad2deg(theta_3)}")
+        print(np.rad2deg(theta_2), " + ", np.rad2deg(np.pi/2)," = ", np.rad2deg(theta_2)+ np.rad2deg(np.pi/2))
+        print(theta_3 + np.pi/2)
+        print(f"theta 1, 2, 3 are {np.rad2deg(self.theta[0])}, {np.rad2deg(self.theta[1])}, {np.rad2deg(self.theta[2])}")
 
         # multiply wrist pos * H_6_0
 
