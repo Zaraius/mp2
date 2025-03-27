@@ -9,6 +9,7 @@ from arm_models import Robot
 from helper_fcns.utils import EndEffector
 import time
 from pynput import keyboard
+import yaml
 
 
 class Visualizer:
@@ -177,6 +178,28 @@ class Visualizer:
             self.control_frame, text="Deactivate VK", command=self.deactivate_VK
         )
         self.vk_deactivate_button.grid(column=1, row=row_number, columnspan=1, pady=2)
+        row_number += 3
+
+        # ------------------------------------------------------------------------------------------------
+        # Trajectory generation
+        # ------------------------------------------------------------------------------------------------
+        self.tg_entry_title = ttk.Label(
+            self.control_frame,
+            text="Trajectory Generation:",
+            font=("Arial", 13, "bold"),
+        )
+        self.tg_entry_title.grid(column=0, row=row_number, columnspan=2, pady=(0, 10))
+        row_number += 1
+
+        self.tg_generate_button = ttk.Button(
+            self.control_frame, text="Generate Trajectory", command=self.generate_traj
+        )
+        self.tg_generate_button.grid(column=0, row=row_number, columnspan=1, pady=2)
+
+        self.tg_folow_button = ttk.Button(
+            self.control_frame, text="Follow Trajectory", command=self.follow_traj
+        )
+        self.tg_folow_button.grid(column=1, row=row_number, columnspan=1, pady=2)
         row_number += 1
 
         # Start the keyboard listener
@@ -294,6 +317,27 @@ class Visualizer:
         """
         self.vk_status = False
 
+    def generate_traj(self):
+        """
+        Reads waypoint data from yaml file and plots points in 3D visualization
+        """
+        print("Trajectory Generation Mode Activated! \n Generating trajectory...")
+
+        # get pid_gains from yaml file
+        with open("waypoints.yml", "r") as file:
+            waypoints = yaml.safe_load(file)
+
+        self.waypoint_idx = 0
+        self.robot.update_waypoints(waypoints["points"])
+        self.robot.plot_3D()
+        self.canvas.draw()
+
+    def follow_traj(self):
+        """
+        TBA
+        """
+        pass
+
     def check_vk_status(self):
         """
         Checks and returns the status of the velocity kinematics.
@@ -347,7 +391,7 @@ class Visualizer:
                 self.v[2] = 0
 
 
-def get_robot_type(robot_type: str):
+def get_robot_type(robot_type: str) -> str:
     """
     Maps the robot type argument to a human-readable string.
 
