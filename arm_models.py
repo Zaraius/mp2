@@ -956,40 +956,74 @@ class FiveDOFRobot:
         # r has 2 solutions {r = -sqrt(x^2 + y^2), r = +sqrt(x^2 + y^2)}
         ########################################
         # Solve theta 1
+
+
+        
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+
+        H = np.zeros((4, 4))
+        H[:3, :3] = EE_rot
+        H[:3, 3] = [EE.x, EE.y, EE.z]
+        H[3, :] = [0, 0, 0, 1]
+        # H = np.block([[EE_rot, EE_euler],
+        #       [np.array([[0, 0, 0, 1]])]])
+        print(f"{H=}")
+        hInv = np.linalg.inv(H)
+
+        wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
+
+        print(wrist)
+
         x, y = EE.x, EE.y
-        theta_1 = np.arctan2(y, x)
-        self.theta[0] = theta_1
+        theta_1 = np.arctan2(y, x) + np.pi
+        self.theta[0] = theta_1 #replace this and add it to list
+        # check thetas with forward kinematics and see if it actually reaches desired position correct
 
         # Find rotation of EE matrix
-        EE_euler = (EE.rotx, EE.roty, EE.rotz)
-        EE_rot = np.array(euler_to_rotm(EE_euler), float)
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+        print(f"{EE_rot=}")
 
         # Find Position of joint 3 in base frame
-        # l1 = .3, l5 = .12
-        P_EE = np.array([EE.x, EE.y, EE.z], float)
-        print(f"position EE is: {P_EE}")
-        k = np.array([0, 0, 1], float)
+        P_EE = np.array([EE.x, EE.y, EE.z])
+        k = np.array([0, 0, 1])
+        print(f"{EE_rot @ k=}")
         P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
-        print(f"position of wrist is: {P_3}")
 
-        # Solve decoupled    kinematic problem in frame 1 for theta 2 & 3
+        print(f"{P_3=}")
+        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
+
+        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        delta_a = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
-        alpha = np.arctan2(delta_z, delta_a)
-        print(f"delta a and z and L are {delta_a}, {delta_z}, {L}")
-        print(
-            f"phi is arccos of: {(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)}"
-        )
+        alpha = np.arctan2(delta_z, delta_x)
+        print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
         theta_3 = np.pi - phi
         gamma = self.l3 * sin(theta_3)
-        # print(f"denominator of beta is {L}")
         beta = np.arcsin(gamma / L)
-        theta_2 = alpha - beta
-        print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
+        theta_2 = alpha - beta + np.pi/2
         self.theta[1], self.theta[2] = theta_2, theta_3
+        self.calc_forward_kinematics(self.theta, radians=True)
+
+        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+
+        # multiply wrist pos * H_6_0
+
+        # we have end effector pos and rotation (frame)
+        # euler to rotm to make the DH matrix using ^
+        # Inverse that so you have H_6_0
+        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
+        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
+        # then we can
+
+        # compute r_0-3
+        
+
         # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
 
         ########################################
@@ -1002,14 +1036,7 @@ class FiveDOFRobot:
         # insert your code here
         # FIX FORWARD KINEMATICS TO BE STRAIGHT UP
         # Solve theta 1
-        # multiply wrist pos * H_6_0
-
-        # we have end effector pos and rotation (frame)
-        # euler to rotm to make the DH matrix using ^
-        # Inverse that so you have H_6_0
-        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
-        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
-        # then we can
+ 
 
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
@@ -1028,8 +1055,8 @@ class FiveDOFRobot:
         print(wrist)
 
         x, y = EE.x, EE.y
-        theta_1 = [np.arctan2(y, x), np.arctan2(y,x) + np.pi]
-        # self.theta[0] = theta_1
+        theta_1 = np.arctan2(y, x)
+        self.theta[0] = theta_1 #replace this and add it to list
         # check thetas with forward kinematics and see if it actually reaches desired position correct
 
         # Find rotation of EE matrix
@@ -1060,6 +1087,8 @@ class FiveDOFRobot:
         beta = np.arcsin(gamma / L)
         theta_2 = alpha - beta
         self.theta[1], self.theta[2] = theta_2, theta_3
+        self.calc_forward_kinematics(self.theta, radians=True)
+
         print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
 
         #     x, y, z = EE.x, EE.y, EE.z
