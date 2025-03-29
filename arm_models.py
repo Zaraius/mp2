@@ -842,8 +842,30 @@ class FiveDOFRobot:
         """ Calculate numerical inverse kinematics based on input coordinates. """
         
         ########################################
+        
+        pos_des = [EE.x, EE.y, EE.z]
+        print(f"running numerical inverse for {pos_des}")
 
-        # insert your code here
+        # theta to update and check against
+        
+        for i in range(ilimit):
+            print(f"iteration: {i}")
+            pos_current = self.solve_forward_kinematics()
+            error = pos_des - pos_current[0:3]
+            print(f"desired is {pos_des}")
+            print(f"current position is {pos_current[0:3]}")
+            print(f"error is {np.linalg.norm(error)}")
+            if np.linalg.norm(error) > tol:
+                # print(f"before update | error is {error}")
+                # print(f"before update | pseudo inverse return is {self.inverse_jacobian(pseudo=True)}")
+                print(f"thetas are {self.theta}")
+                print(f"before update | error correction is {np.dot(self.inverse_jacobian(pseudo=True), error)}")
+                
+                self.theta = self.theta + np.dot(self.inverse_jacobian(pseudo=True), error)
+            else:
+                break
+
+
 
         ########################################
         self.calc_forward_kinematics(self.theta, radians=True)
@@ -988,7 +1010,8 @@ class FiveDOFRobot:
         ])
 
 
-    def solve_forward_kinematics(self, theta: list, radians=False):
+    def solve_forward_kinematics(self, theta: list, radians=True):
+        """Solves the new transformation matrix from base to EE at current theta values"""
 
         # Convert degrees to radians
         if not radians:
