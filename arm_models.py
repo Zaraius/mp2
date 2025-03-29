@@ -850,21 +850,17 @@ class FiveDOFRobot:
         
         for i in range(ilimit):
             print(f"iteration: {i}")
-            pos_current = self.solve_forward_kinematics()
+            # solve for error
+            pos_current = self.solve_forward_kinematics(self.theta)
             error = pos_des - pos_current[0:3]
-            print(f"desired is {pos_des}")
-            print(f"current position is {pos_current[0:3]}")
-            print(f"error is {np.linalg.norm(error)}")
+            # If error outside tol, recalculate theta (Newton-Raphson)
             if np.linalg.norm(error) > tol:
-                # print(f"before update | error is {error}")
-                # print(f"before update | pseudo inverse return is {self.inverse_jacobian(pseudo=True)}")
-                print(f"thetas are {self.theta}")
-                print(f"before update | error correction is {np.dot(self.inverse_jacobian(pseudo=True), error)}")
-                
                 self.theta = self.theta + np.dot(self.inverse_jacobian(pseudo=True), error)
+            # If error is within tolerence: break
             else:
                 break
-
+        
+        print(f"within limits?: {check_joint_limits(self.theta, self.theta_limits)}")
 
 
         ########################################
@@ -1054,6 +1050,7 @@ class FiveDOFRobot:
 
         # Set the end effector (EE) position
         self.ee.x, self.ee.y, self.ee.z = self.points[-1][:3]
+        print(f"ee pos is {self.points[-1][:3]}")
         
         # Extract and assign the RPY (roll, pitch, yaw) from the rotation matrix
         rpy = rotm_to_euler(self.T_ee[:3, :3])
