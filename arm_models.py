@@ -878,8 +878,7 @@ class FiveDOFRobot:
 
         # theta to update and check against
         
-        for i in range(ilimit):
-            print(f"iteration: {i}")
+        for _ in range(ilimit):
             # solve for error
             pos_current = self.solve_forward_kinematics(self.theta)
             error = pos_des - pos_current[0:3]
@@ -889,9 +888,6 @@ class FiveDOFRobot:
             # If error is within tolerence: break
             else:
                 break
-        
-        print(f"within limits?: {check_joint_limits(self.theta, self.theta_limits)}")
-
 
         ########################################
 
