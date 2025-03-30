@@ -10,6 +10,7 @@ from helper_fcns.utils import (
     check_joint_limits,
     dh_to_matrix,
     near_zero,
+    wraptopi,
 )
 
 PI = 3.1415926535897932384
@@ -1077,12 +1078,6 @@ class FiveDOFRobot:
         beta = np.arcsin(gamma / L)
         theta2_list.append(alpha - beta + np.pi/2)
 
-        # gamma = self.l3 * sin(theta_3)
-        # beta = np.arcsin(gamma / L)
-        # theta_2 = alpha - beta + np.pi/2
-        # print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
-        # self.theta[1], self.theta[2] = theta_2, theta_3
-        # self.calc_forward_kinematics(self.theta, radians=True)
 
         # print(f"Desired p {wrist_pos}")
         # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
@@ -1105,6 +1100,8 @@ class FiveDOFRobot:
                 dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
                 dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
                 dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+                
+            
                 r_0_3 = dh1 @ dh2 @ dh3
                 r_0_3 = r_0_3[:3, :3]
                 # print(f"{r_0_3=}")
@@ -1112,7 +1109,10 @@ class FiveDOFRobot:
                 r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
                 # print(f"{r_3_5=}")
                 # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
-                theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
+                
+                theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
+            
+                #theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
                 theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
                 theta4_list.append(theta_4)
@@ -1144,6 +1144,7 @@ class FiveDOFRobot:
                 print("We should give up coding")
         
         self.calc_forward_kinematics(self.theta, radians=True)
+        
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
 
