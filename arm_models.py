@@ -168,28 +168,6 @@ class Robot:
             # self.waypoint_roty.append(waypoints[i][4])
             # self.waypoint_rotz.append(waypoints[i][5])
 
-
-    def plot_waypoints(self):
-        """
-        Plots the waypoints in the 3D visualization
-        """
-        # draw the points
-        self.sub1.plot(
-            self.waypoint_x, self.waypoint_y, self.waypoint_z, "or", markersize=8
-        )
-
-    def update_waypoints(self, waypoints: list):
-        """
-        Updates the waypoints into a member variable
-        """
-        for i in range(len(waypoints)):
-            self.waypoint_x.append(waypoints[i][0])
-            self.waypoint_y.append(waypoints[i][1])
-            self.waypoint_z.append(waypoints[i][2])
-            # self.waypoint_rotx.append(waypoints[i][3])
-            # self.waypoint_roty.append(waypoints[i][4])
-            # self.waypoint_rotz.append(waypoints[i][5])
-
     def plot_3D(self):
         """
         Plots the 3D visualization of the robot, including the robot's links, end-effector, and reference frames.
