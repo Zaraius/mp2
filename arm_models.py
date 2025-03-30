@@ -927,13 +927,12 @@ class FiveDOFRobot:
         # Define DH matrix for Hiwonder 6 DOF robot arm car
         # Degree rotations converted to radians
         # theta, d, a, alpha
-        self.DH = [
-            [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
-            [self.theta[2], 0, self.l3, np.pi],
-            [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
-            [self.theta[4], self.l4 + self.l5, 0, 0],
-        ]
+        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
+        self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
+        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
+        self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
+        
         self.T = np.stack(
             [
                 dh_to_matrix(self.DH[0]),
@@ -969,20 +968,13 @@ class FiveDOFRobot:
         ]
 
         # Set the Denavit-Hartenberg parameters for each joint
-        # self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
-        # self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
-        # self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
-        # self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
-        # self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
+        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
+        self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
+        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
+        self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
         
-        self.DH = [
-            [self.theta[0], self.l1, 0, -np.pi / 2],
-            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
-            [self.theta[2], 0, self.l3, np.pi],
-            [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
-            [self.theta[4], self.l4 + self.l5, 0, 0],
-        ]
-
+        
         # Compute the transformation matrices
         for i in range(self.num_dof):
             self.T[i] = dh_to_matrix(self.DH[i])
@@ -1105,21 +1097,24 @@ class FiveDOFRobot:
                 theta_1 = theta1_list[i]
                 theta_2 = theta2_list[j]
                 theta_3 = theta3_list[j]
-                dh1 = dh_to_matrix([theta_1, self.l1, 0, -np.pi / 2])
-                dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
-                dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
-                
+                # dh1 = dh_to_matrix([theta_1, self.l1, 0, -np.pi / 2])
+                # dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
+                # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+                dh1 = dh_to_matrix([self.theta[0], self.l1, 0, np.pi / 2])
+                dh2 = dh_to_matrix([self.theta[1] + np.pi / 2, 0, self.l2, np.pi])
+                dh3 = dh_to_matrix([self.theta[2], 0, self.l3, np.pi])
+
             
-                r_0_3 = dh1 @ dh2 @ dh3
-                r_0_3 = r_0_3[:3, :3]
+                t_0_3 = dh1 @ dh2 @ dh3
+                r_0_3 = t_0_3[:3, :3]
                 # print(f"{r_0_3=}")
 
-                r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
+                r_3_5 = np.transpose(r_0_3) @ EE_rot
                 # print(f"{r_3_5=}")
                 # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
                 
                 #theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
-                theta_4 = wraptopi((np.pi / 2) + np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
+                theta_4 = wraptopi((np.pi/2) + np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
                 #theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
                 theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
