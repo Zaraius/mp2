@@ -1,5 +1,6 @@
 from math import sqrt, sin, cos, atan, atan2, degrees
 import time
+from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 from helper_fcns.utils import (
@@ -55,7 +56,7 @@ class Robot:
         elif type == "5-dof":
             self.num_joints = 5
             self.ee_coordinates = ["X", "Y", "Z", "RotX", "RotY", "RotZ"]
-            self.robot = FiveDOFRobot()
+            self.robot = FiveDOFRobot(parent_robot=self)
 
         self.origin = [0.0, 0.0, 0.0]
         self.axes_length = 0.04
@@ -877,8 +878,9 @@ class FiveDOFRobot:
         T: Transformation matrices for each joint.
     """
 
-    def __init__(self):
+    def __init__(self, parent_robot=None):
         """Initialize the robot parameters and joint limits."""
+        self.parent_robot = parent_robot
         # Link lengths
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
         self.l1, self.l2, self.l3, self.l4, self.l5 = (
@@ -995,8 +997,6 @@ class FiveDOFRobot:
         ########################################
         # Solve theta 1
 
-
-        
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
 
@@ -1006,10 +1006,10 @@ class FiveDOFRobot:
         H[3, :] = [0, 0, 0, 1]
         # H = np.block([[EE_rot, EE_euler],
         #       [np.array([[0, 0, 0, 1]])]])
-        print(f"{H=}")
+        # print(f"{H=}")
         hInv = np.linalg.inv(H)
 
-        wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
+        wrist_pos = np.array([EE.x, EE.y, EE.z]) - (self.l4 + self.l5) * (EE_rot @ np.array([0, 0, 1]))
 
         # R_0_6 = euler_to_rotm((EE.rotx, EE.roty, EE.rotz))
         # z_rot = R_0_6[:, 2]
@@ -1054,17 +1054,17 @@ class FiveDOFRobot:
         k = np.array([0, 0, 1])
         P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
 
-        print(f"{P_3=}")
+        # print(f"{P_3=}")
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
 
         # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+        # print(f"L = {L} l2 {self.l2} l3 {self.l3}")
         delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
         alpha = np.arctan2(delta_z, delta_x)
-        print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
+        # print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
         
         theta3_list.append(np.pi - phi)
@@ -1085,23 +1085,17 @@ class FiveDOFRobot:
         # self.theta[1], self.theta[2] = theta_2, theta_3
         # self.calc_forward_kinematics(self.theta, radians=True)
 
-        print(f"theta 1, 2, 3 are {theta1_list}, {theta2_list}, {theta3_list}")
-
-        
-        
-        
-        
-        print(f"Desired p {wrist}")
+        # print(f"Desired p {wrist_pos}")
         # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
         self.theta[3] = 0
         self.theta[4] = 0
         for i in range(2):
             for j in range(2):
-                    self.theta[0] = theta1_list[i]
-                    self.theta[1] = theta2_list[j]
-                    self.theta[2] = theta3_list[j]
-                    self.calc_forward_kinematics(self.theta, radians=True)
-                    print(f"{self.theta=}")
+                self.theta[0] = theta1_list[i]
+                self.theta[1] = theta2_list[j]
+                self.theta[2] = theta3_list[j]
+                self.calc_forward_kinematics(self.theta, radians=True)
+                print(f"{self.theta=}")
         
         # multiply wrist pos * H_6_0
 
@@ -1113,24 +1107,32 @@ class FiveDOFRobot:
         # then we can
 
         # compute r_0-3
-        # # dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
-        # # dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
-        # # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
-        # r_0_3 = dh1 @ dh2 @ dh3
-        # r_0_3 = r_0_3[:3, :3]
-        # print(f"{r_0_3=}")
+        for i in range(2):
+            for j in range(2):
+                theta_1 = theta1_list[i]
+                theta_2 = theta2_list[j]
+                theta_3 = theta3_list[j]
+                dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
+                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
+                dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+                r_0_3 = dh1 @ dh2 @ dh3
+                r_0_3 = r_0_3[:3, :3]
+                # print(f"{r_0_3=}")
 
-        # r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
-        # print(f"{r_3_5=}")
-        # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
-        # theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
-        # theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
-        # # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
-        # self.theta[3] = theta_4
-        # self.theta[4] = theta_5
-        # find theta 4, 5
-        ########################################
-        self.calc_forward_kinematics(self.theta, radians=True)
+                r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
+                # print(f"{r_3_5=}")
+                # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
+                theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
+                theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
+                # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+                self.theta[3] = theta_4
+                self.theta[4] = theta_5
+                self.calc_forward_kinematics(self.theta, radians=True)
+                # if self.parent_robot is not None:
+                #     self.parent_robot.plot_3D()  # Call parent's plot_3D
+                #     # plt.pause(1.0)
+                #     time.sleep(1)
+                print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {theta4_list}, {theta5_list}")
 
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
@@ -1151,12 +1153,12 @@ class FiveDOFRobot:
         H[3, :] = [0, 0, 0, 1]
         # H = np.block([[EE_rot, EE_euler],
         #       [np.array([[0, 0, 0, 1]])]])
-        print(f"{H=}")
+        # print(f"{H=}")
         hInv = np.linalg.inv(H)
 
         wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
 
-        print(wrist)
+        # print(wrist)
 
         x, y = EE.x, EE.y
         theta_1 = np.arctan2(y, x)
@@ -1166,25 +1168,25 @@ class FiveDOFRobot:
         # Find rotation of EE matrix
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
-        print(f"{EE_rot=}")
+        # print(f"{EE_rot=}")
 
         # Find Position of joint 3 in base frame
         P_EE = np.array([EE.x, EE.y, EE.z])
         k = np.array([0, 0, 1])
-        print(f"{EE_rot @ k=}")
+        # print(f"{EE_rot @ k=}")
         P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
 
-        print(f"{P_3=}")
+        # print(f"{P_3=}")
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
 
         # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+        # print(f"L = {L} l2 {self.l2} l3 {self.l3}")
         delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
         alpha = np.arctan2(delta_z, delta_x)
-        print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
+        # print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
         theta_3 = np.pi = phi
         gamma = self.l3 * sin(theta_3)
@@ -1193,7 +1195,7 @@ class FiveDOFRobot:
         self.theta[1], self.theta[2] = theta_2, theta_3
         self.calc_forward_kinematics(self.theta, radians=True)
 
-        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
 
         #     x, y, z = EE.x, EE.y, EE.z
         #     EE_euler = [EE.rotx, EE.roty, EE.rotz]
@@ -1498,10 +1500,10 @@ class FiveDOFRobot:
 
         # Calculate the EE axes in space (in the base frame)
         self.EE = [self.ee.x, self.ee.y, self.ee.z]
-        print(f"{self.points=}")
+        # print(f"{self.points=}")
         self.EE_axes = np.array(
             [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
         )
-        
-        
-        
+
+
+
