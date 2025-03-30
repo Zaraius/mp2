@@ -1041,6 +1041,7 @@ class FiveDOFRobot:
         gamma = self.l3 * sin(theta_3)
         beta = np.arcsin(gamma / L)
         theta_2 = alpha - beta + np.pi/2
+        theta_2 = alpha - beta + (np.pi / 2)
         print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
         self.theta[1], self.theta[2] = theta_2, theta_3
         self.calc_forward_kinematics(self.theta, radians=True)
