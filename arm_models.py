@@ -1038,14 +1038,14 @@ class FiveDOFRobot:
         theta3_list.append(-(np.pi - phi))
 
         # first solution
-        gamma = self.l3 * sin(theta3_list[0])
-        beta = np.arcsin(gamma / L)
-        theta2_list.append(alpha - beta + np.pi/2)
+        gamma1 = self.l3 * sin(theta3_list[0])
+        beta1 = np.arcsin(gamma1 / L)
+        theta2_list.append(-(alpha - beta1 - np.pi/2))
 
         # second solution
-        gamma = self.l3 * sin(theta3_list[1])
-        beta = np.arcsin(gamma / L)
-        theta2_list.append(alpha - beta + np.pi/2)
+        gamma2 = self.l3 * sin(theta3_list[1])
+        beta2 = np.arcsin(gamma2 / L)
+        theta2_list.append(alpha + beta2 - np.pi/2)
 
 
         # print(f"Desired p {wrist_pos}")
@@ -1070,8 +1070,8 @@ class FiveDOFRobot:
                 # dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
                 # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
                 dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
-                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
-                dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, 0])
+                dh3 = dh_to_matrix([-theta_3, 0, self.l3, 0])
 
             
                 t_0_3 = dh1 @ dh2 @ dh3
@@ -1093,27 +1093,27 @@ class FiveDOFRobot:
             
 
         # print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
+        print(f"theta  2 and 3 are {np.rad2deg(theta2_list)}, {np.rad2deg(theta3_list)}")
         print(f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}")
 
-        print(theta5_list[1])
         match soln:
             case 0:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0] # good
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1] # good
             case 1:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0] 
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1] 
             case 2:   
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[0]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2] # good
             case 3:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[0] #DUPLICATE
-            case 4:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[0] #DUPLICATE
-            case 5:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[0]
-            case 6:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0]
-            case 7:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0]
-            case _:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2] 
+            # case 4:
+            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[3], theta5_list[2] #DUPLICATE
+            # case 5:
+            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[3], theta5_list[3]
+            # case 6:
+            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[3]
+            # case 7:
+            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[2]
+            # case _:
                 print("We should give up coding")
         
         self.calc_forward_kinematics(self.theta, radians=True)
