@@ -261,7 +261,7 @@ class Robot:
         self.draw_ref_line([EE.x, EE.y, EE.z], self.sub1, ref="xyz")
 
         # add text at bottom of window
-        pose_text = "End-effector Pose:[ "
+        pose_text = "EE:[ "
         pose_text += f"X: {round(EE.x,4)},  "
         pose_text += f"Y: {round(EE.y,4)},  "
         pose_text += f"Z: {round(EE.z,4)},  "
@@ -969,11 +969,19 @@ class FiveDOFRobot:
         ]
 
         # Set the Denavit-Hartenberg parameters for each joint
-        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
-        self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
-        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
-        self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
+        # self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
+        # self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
+        # self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
+        # self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
+        # self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
+        
+        self.DH = [
+            [self.theta[0], self.l1, 0, -np.pi / 2],
+            [self.theta[1] - np.pi / 2, 0, self.l2, np.pi],
+            [self.theta[2], 0, self.l3, np.pi],
+            [self.theta[3] + np.pi / 2, 0, 0, np.pi / 2],
+            [self.theta[4], self.l4 + self.l5, 0, 0],
+        ]
 
         # Compute the transformation matrices
         for i in range(self.num_dof):
@@ -1097,8 +1105,8 @@ class FiveDOFRobot:
                 theta_1 = theta1_list[i]
                 theta_2 = theta2_list[j]
                 theta_3 = theta3_list[j]
-                dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
-                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
+                dh1 = dh_to_matrix([theta_1, self.l1, 0, -np.pi / 2])
+                dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
                 dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
                 
             
@@ -1110,8 +1118,8 @@ class FiveDOFRobot:
                 # print(f"{r_3_5=}")
                 # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
                 
-                theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
-            
+                #theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
+                theta_4 = wraptopi((np.pi / 2) + np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
                 #theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
                 theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
@@ -1130,8 +1138,6 @@ class FiveDOFRobot:
                 self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[1]
             case 3:
                 self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
-                
-            # Case 5 - 8 is the same as case 1 
             case 4:
                 self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
             case 5:
