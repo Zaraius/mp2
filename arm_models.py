@@ -1086,16 +1086,7 @@ class FiveDOFRobot:
 
         # print(f"Desired p {wrist_pos}")
         # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
-        self.theta[3] = 0
-        self.theta[4] = 0
-        for i in range(2):
-            for j in range(2):
-                self.theta[0] = theta1_list[i]
-                self.theta[1] = theta2_list[j]
-                self.theta[2] = theta3_list[j]
-                self.calc_forward_kinematics(self.theta, radians=True)
-                print(f"{self.theta=}")
-        
+
         # multiply wrist pos * H_6_0
 
         # we have end effector pos and rotation (frame)
@@ -1124,16 +1115,35 @@ class FiveDOFRobot:
                 theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
                 theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
-                self.theta[3] = theta_4
-                self.theta[4] = theta_5
+                theta4_list.append(theta_4)
+                theta5_list.append(theta_5)
                 self.calc_forward_kinematics(self.theta, radians=True)
 
-                # if self.parent_robot is not None:
-                #     self.parent_robot.plot_3D()  # Call parent's plot_3D
-                #     # plt.pause(1.0)
-                #     time.sleep(1)
         print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
-
+        
+        match soln:
+            case 0:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0]
+            case 1:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0]
+            case 2:   
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[1]
+            case 3:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
+                
+            # Case 5 - 8 is the same as case 1 
+            case 4:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
+            case 5:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[1]
+            case 6:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0]
+            case 7:
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0]
+            case _:
+                print("We should give up coding")
+        
+        self.calc_forward_kinematics(self.theta, radians=True)
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
 
