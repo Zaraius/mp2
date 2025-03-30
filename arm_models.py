@@ -169,6 +169,27 @@ class Robot:
             # self.waypoint_rotz.append(waypoints[i][5])
 
 
+    def plot_waypoints(self):
+        """
+        Plots the waypoints in the 3D visualization
+        """
+        # draw the points
+        self.sub1.plot(
+            self.waypoint_x, self.waypoint_y, self.waypoint_z, "or", markersize=8
+        )
+
+    def update_waypoints(self, waypoints: list):
+        """
+        Updates the waypoints into a member variable
+        """
+        for i in range(len(waypoints)):
+            self.waypoint_x.append(waypoints[i][0])
+            self.waypoint_y.append(waypoints[i][1])
+            self.waypoint_z.append(waypoints[i][2])
+            # self.waypoint_rotx.append(waypoints[i][3])
+            # self.waypoint_roty.append(waypoints[i][4])
+            # self.waypoint_rotz.append(waypoints[i][5])
+
     def plot_3D(self):
         """
         Plots the 3D visualization of the robot, including the robot's links, end-effector, and reference frames.
@@ -191,6 +212,9 @@ class Robot:
             self.point_z.append(self.robot.points[i][2])
         self.sub1.plot(self.point_x, self.point_y, self.point_z, marker='o', markerfacecolor='m', markersize=12)
 
+
+        # draw the waypoints
+        self.plot_waypoints()
 
         # draw the waypoints
         self.plot_waypoints()
@@ -756,8 +780,14 @@ class FiveDOFRobot:
         """Initialize the robot parameters and joint limits."""
         # Link lengths
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
-        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105 # from hardware measurements
-        
+        self.l1, self.l2, self.l3, self.l4, self.l5 = (
+            0.155,
+            0.099,
+            0.095,
+            0.055,
+            0.105,
+        )  # from hardware measurements
+
         # Joint angles (initialized to zero)
         self.theta = [0, 0, 0, 0, 0]
         
@@ -771,13 +801,13 @@ class FiveDOFRobot:
         ]
 
         self.thetadot_limits = [
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2]
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
         ]
-        
+
         # End-effector object
         self.ee = EndEffector()
         
@@ -848,8 +878,7 @@ class FiveDOFRobot:
 
         # theta to update and check against
         
-        for i in range(ilimit):
-            print(f"iteration: {i}")
+        for _ in range(ilimit):
             # solve for error
             pos_current = self.solve_forward_kinematics(self.theta)
             error = pos_des - pos_current[0:3]
@@ -859,13 +888,11 @@ class FiveDOFRobot:
             # If error is within tolerence: break
             else:
                 break
-        
-        print(f"within limits?: {check_joint_limits(self.theta, self.theta_limits)}")
-
 
         ########################################
-        self.calc_forward_kinematics(self.theta, radians=True)
 
+        self.calc_forward_kinematics(self.theta, radians=True)
+        
 
     def calc_velocity_kinematics(self, vel: list):
         """
@@ -892,13 +919,8 @@ class FiveDOFRobot:
         self.theta[3] += 0.02 * thetadot[3]
         self.theta[4] += 0.02 * thetadot[4]
 
-        # print(f'linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
-        # print(f'thetadot (deg/s) = {[round(td,2) for td in thetadot]}')
-        # print(f'Commanded theta (deg) = {[round(th,2) for th in self.theta]}')  
-
         # Recompute robot points based on updated joint angles
         self.calc_forward_kinematics(self.theta, radians=True)
-
 
     def jacobian(self, theta: list = None):
         """
@@ -906,7 +928,6 @@ class FiveDOFRobot:
 
         Args:
             theta (list, optional): The joint angles for the robot. Defaults to self.theta.
-        
         Returns:
             Jacobian matrix (3x5).
         """
@@ -954,15 +975,14 @@ class FiveDOFRobot:
 
         # Replace near-zero values with zero, primarily for debugging purposes
         return near_zero(jacobian)
-    
-    
+
     def inverse_jacobian(self, pseudo=False):
         """
         Compute the inverse of the Jacobian matrix using either pseudo-inverse or regular inverse.
-        
+
         Args:
             pseudo: Boolean flag to use pseudo-inverse (default is False).
-        
+
         Returns:
             The inverse (or pseudo-inverse) of the Jacobian matrix.
         """
@@ -1028,7 +1048,6 @@ class FiveDOFRobot:
 
         return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @ np.array([0, 0, 0, 1])
 
-
     def calc_robot_points(self):
         """ Calculates the main arm points using the current joint angles """
 
@@ -1050,7 +1069,6 @@ class FiveDOFRobot:
 
         # Set the end effector (EE) position
         self.ee.x, self.ee.y, self.ee.z = self.points[-1][:3]
-        print(f"ee pos is {self.points[-1][:3]}")
         
         # Extract and assign the RPY (roll, pitch, yaw) from the rotation matrix
         rpy = rotm_to_euler(self.T_ee[:3, :3])
