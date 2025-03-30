@@ -56,7 +56,7 @@ class Robot:
         elif type == "5-dof":
             self.num_joints = 5
             self.ee_coordinates = ["X", "Y", "Z", "RotX", "RotY", "RotZ"]
-            self.robot = FiveDOFRobot(parent_robot=self)
+            self.robot = FiveDOFRobot()
 
         self.origin = [0.0, 0.0, 0.0]
         self.axes_length = 0.04
@@ -880,7 +880,6 @@ class FiveDOFRobot:
 
     def __init__(self, parent_robot=None):
         """Initialize the robot parameters and joint limits."""
-        self.parent_robot = parent_robot
         # Link lengths
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
         self.l1, self.l2, self.l3, self.l4, self.l5 = (
@@ -1128,11 +1127,12 @@ class FiveDOFRobot:
                 self.theta[3] = theta_4
                 self.theta[4] = theta_5
                 self.calc_forward_kinematics(self.theta, radians=True)
+
                 # if self.parent_robot is not None:
                 #     self.parent_robot.plot_3D()  # Call parent's plot_3D
                 #     # plt.pause(1.0)
                 #     time.sleep(1)
-                print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {theta4_list}, {theta5_list}")
+        print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
 
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
