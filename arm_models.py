@@ -896,12 +896,7 @@ class FiveDOFRobot:
         ########################################
 
         self.calc_forward_kinematics(self.theta, radians=True)
-
-    def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
-        """Calculate numerical inverse kinematics based on input coordinates."""
         
-
-
 
     def calc_velocity_kinematics(self, vel: list):
         """
@@ -1078,7 +1073,6 @@ class FiveDOFRobot:
 
         # Set the end effector (EE) position
         self.ee.x, self.ee.y, self.ee.z = self.points[-1][:3]
-        print(f"ee pos is {self.points[-1][:3]}")
         
         # Extract and assign the RPY (roll, pitch, yaw) from the rotation matrix
         rpy = rotm_to_euler(self.T_ee[:3, :3])
