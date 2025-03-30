@@ -1,4 +1,5 @@
 from math import sqrt, sin, cos, atan, atan2, degrees
+import time
 import numpy as np
 from matplotlib.figure import Figure
 from helper_fcns.utils import (
@@ -214,6 +215,9 @@ class Robot:
 
         # draw the points
         for i in range(len(self.robot.points)):
+            # print(f"{self.robot.points[i][0]=}")
+            # print(f"{self.robot.points[i][1]=}")
+            # print(f"{self.robot.points[i][2]=}")
             self.point_x.append(self.robot.points[i][0])
             self.point_y.append(self.robot.points[i][1])
             self.point_z.append(self.robot.points[i][2])
@@ -1007,13 +1011,38 @@ class FiveDOFRobot:
 
         wrist = hInv @ [0, 0, (self.l4 + self.l5), 1]
 
-        print(wrist)
+        # R_0_6 = euler_to_rotm((EE.rotx, EE.roty, EE.rotz))
+        # z_rot = R_0_6[:, 2]
+        # d5 = self.l4 + self.l5
+        # pos_j4 = np.array([EE.x, EE.y, EE.z]) - (d5 * z_rot)
+        # print(f"{pos_j4=}")
 
         x, y = EE.x, EE.y
-        theta_1 = np.arctan2(y, x) + np.pi
-        self.theta[0] = theta_1 #replace this and add it to list
+        theta_1 = np.arctan2(y, x)
+        
+        #  self.theta_limits = [
+        #     [-np.pi, np.pi],
+        #     [-np.pi / 3, np.pi],
+        #     [-np.pi + np.pi / 12, np.pi - np.pi / 4],
+        #     [-np.pi + np.pi / 12, np.pi - np.pi / 12],
+        #     [-np.pi, np.pi],
+        # ]
+        # two thetas with the smallest errors
+        theta1_list = []
+        theta2_list = []
+        theta3_list = []
+        theta4_list = []
+        theta5_list = []
+        
+        theta1_list.append(theta_1)
+        if theta_1 > 0:
+            theta1_list.append(theta_1 - np.pi) #replace this and add it to list
+        else: 
+            theta1_list.append(theta_1 + np.pi) #replace this and add it to list
+        
+        
         # check thetas with forward kinematics and see if it actually reaches desired position correct
-
+            
         # Find rotation of EE matrix
         EE_euler = (EE.rotx, EE.roty, EE.rotz)
         EE_rot = np.array(euler_to_rotm(EE_euler))
@@ -1037,17 +1066,43 @@ class FiveDOFRobot:
         alpha = np.arctan2(delta_z, delta_x)
         print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
-        theta_3 = np.pi - phi
-        gamma = self.l3 * sin(theta_3)
+        
+        theta3_list.append(np.pi - phi)
+        theta3_list.append(-(np.pi - phi))
+
+        gamma = self.l3 * sin(theta3_list[0])
         beta = np.arcsin(gamma / L)
-        theta_2 = alpha - beta + np.pi/2
-        theta_2 = alpha - beta + (np.pi / 2)
-        print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
-        self.theta[1], self.theta[2] = theta_2, theta_3
-        self.calc_forward_kinematics(self.theta, radians=True)
+        theta2_list.append(alpha - beta + np.pi/2)
 
-        print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        gamma = self.l3 * sin(theta3_list[1])
+        beta = np.arcsin(gamma / L)
+        theta2_list.append(alpha - beta + np.pi/2)
 
+        # gamma = self.l3 * sin(theta_3)
+        # beta = np.arcsin(gamma / L)
+        # theta_2 = alpha - beta + np.pi/2
+        # print(f"theta's are : {theta_1}, {theta_2}, {theta_3}")
+        # self.theta[1], self.theta[2] = theta_2, theta_3
+        # self.calc_forward_kinematics(self.theta, radians=True)
+
+        print(f"theta 1, 2, 3 are {theta1_list}, {theta2_list}, {theta3_list}")
+
+        
+        
+        
+        
+        print(f"Desired p {wrist}")
+        # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
+        self.theta[3] = 0
+        self.theta[4] = 0
+        for i in range(2):
+            for j in range(2):
+                    self.theta[0] = theta1_list[i]
+                    self.theta[1] = theta2_list[j]
+                    self.theta[2] = theta3_list[j]
+                    self.calc_forward_kinematics(self.theta, radians=True)
+                    print(f"{self.theta=}")
+        
         # multiply wrist pos * H_6_0
 
         # we have end effector pos and rotation (frame)
@@ -1058,21 +1113,21 @@ class FiveDOFRobot:
         # then we can
 
         # compute r_0-3
-        dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
-        dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
-        dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
-        r_0_3 = dh1 @ dh2 @ dh3
-        r_0_3 = r_0_3[:3, :3]
-        print(f"{r_0_3=}")
+        # # dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
+        # # dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
+        # # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+        # r_0_3 = dh1 @ dh2 @ dh3
+        # r_0_3 = r_0_3[:3, :3]
+        # print(f"{r_0_3=}")
 
-        r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
-        print(f"{r_3_5=}")
-        print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
-        theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
-        theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
-        # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
-        self.theta[3] = theta_4
-        self.theta[4] = theta_5
+        # r_3_5 = np.matrix_transpose(r_0_3) @ EE_rot
+        # print(f"{r_3_5=}")
+        # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
+        # theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
+        # theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
+        # # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+        # self.theta[3] = theta_4
+        # self.theta[4] = theta_5
         # find theta 4, 5
         ########################################
         self.calc_forward_kinematics(self.theta, radians=True)
@@ -1443,6 +1498,10 @@ class FiveDOFRobot:
 
         # Calculate the EE axes in space (in the base frame)
         self.EE = [self.ee.x, self.ee.y, self.ee.z]
+        print(f"{self.points=}")
         self.EE_axes = np.array(
             [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
         )
+        
+        
+        
