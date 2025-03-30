@@ -878,79 +878,49 @@ class FiveDOFRobot:
         DH: Denavit-Hartenberg parameters for each joint.
         T: Transformation matrices for each joint.
     """
-
-    def __init__(self, parent_robot=None):
+    
+    def __init__(self):
         """Initialize the robot parameters and joint limits."""
         # Link lengths
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
-        self.l1, self.l2, self.l3, self.l4, self.l5 = (
-            0.155,
-            0.099,
-            0.095,
-            0.055,
-            0.105,
-        )  # from hardware measurements
-
+        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105 # from hardware measurements
+        
         # Joint angles (initialized to zero)
         self.theta = [0, 0, 0, 0, 0]
-
+        
         # Joint limits (in radians)
         self.theta_limits = [
-            [-np.pi, np.pi],
-            [-np.pi / 3, np.pi],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 4],
-            [-np.pi + np.pi / 12, np.pi - np.pi / 12],
-            [-np.pi, np.pi],
+            [-np.pi, np.pi], 
+            [-np.pi/3, np.pi], 
+            [-np.pi+np.pi/12, np.pi-np.pi/4], 
+            [-np.pi+np.pi/12, np.pi-np.pi/12], 
+            [-np.pi, np.pi]
         ]
 
         self.thetadot_limits = [
-            [-np.pi * 2, np.pi * 2],
-            [-np.pi * 2, np.pi * 2],
-            [-np.pi * 2, np.pi * 2],
-            [-np.pi * 2, np.pi * 2],
-            [-np.pi * 2, np.pi * 2],
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2], 
+            [-np.pi*2, np.pi*2]
         ]
-
+        
         # End-effector object
         self.ee = EndEffector()
-
+        
         # Robot's points
         self.num_dof = 5
         self.points = [None] * (self.num_dof + 1)
-
+        
         # Denavit-Hartenberg parameters and transformation matrices
         self.DH = np.zeros((5, 4))
         self.T = np.zeros((self.num_dof, 4, 4))
 
-        ########################################
-
-        # Define DH matrix for Hiwonder 6 DOF robot arm car
-        # Degree rotations converted to radians
-        # theta, d, a, alpha
-        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
-        self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
-        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
-        self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
-        
-        self.T = np.stack(
-            [
-                dh_to_matrix(self.DH[0]),
-                dh_to_matrix(self.DH[1]),
-                dh_to_matrix(self.DH[2]),
-                dh_to_matrix(self.DH[3]),
-                dh_to_matrix(self.DH[4]),
-            ],
-            axis=0,
-        )
-        self.J = np.zeros([5, 3])
-
-        ########################################
-
+    
     def calc_forward_kinematics(self, theta: list, radians=False):
         """
         Calculate forward kinematics based on the provided joint angles.
-
+        
         Args:
             theta: List of joint angles (in degrees or radians).
             radians: Boolean flag to indicate if input angles are in radians.
@@ -960,25 +930,22 @@ class FiveDOFRobot:
             self.theta = np.deg2rad(theta)
         else:
             self.theta = theta
-
+        
         # Apply joint limits
-        self.theta = [
-            np.clip(th, self.theta_limits[i][0], self.theta_limits[i][1])
-            for i, th in enumerate(self.theta)
-        ]
+        self.theta = [np.clip(th, self.theta_limits[i][0], self.theta_limits[i][1]) 
+                      for i, th in enumerate(self.theta)]
 
         # Set the Denavit-Hartenberg parameters for each joint
-        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
+        self.DH[0] = [self.theta[0], self.l1, 0, np.pi/2]
+        self.DH[1] = [self.theta[1] + np.pi/2, 0, self.l2, np.pi]
         self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
-        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
+        self.DH[3] = [self.theta[3] - np.pi/2, 0, 0, -np.pi/2]
         self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
-        
-        
+
         # Compute the transformation matrices
         for i in range(self.num_dof):
             self.T[i] = dh_to_matrix(self.DH[i])
-
+        
         # Calculate robot points (positions of joints)
         self.calc_robot_points()
 
@@ -1070,10 +1037,12 @@ class FiveDOFRobot:
         theta3_list.append(np.pi - phi)
         theta3_list.append(-(np.pi - phi))
 
+        # first solution
         gamma = self.l3 * sin(theta3_list[0])
         beta = np.arcsin(gamma / L)
         theta2_list.append(alpha - beta + np.pi/2)
 
+        # second solution
         gamma = self.l3 * sin(theta3_list[1])
         beta = np.arcsin(gamma / L)
         theta2_list.append(alpha - beta + np.pi/2)
@@ -1100,9 +1069,9 @@ class FiveDOFRobot:
                 # dh1 = dh_to_matrix([theta_1, self.l1, 0, -np.pi / 2])
                 # dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
                 # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
-                dh1 = dh_to_matrix([self.theta[0], self.l1, 0, np.pi / 2])
-                dh2 = dh_to_matrix([self.theta[1] + np.pi / 2, 0, self.l2, np.pi])
-                dh3 = dh_to_matrix([self.theta[2], 0, self.l3, np.pi])
+                dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
+                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, np.pi])
+                dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
 
             
                 t_0_3 = dh1 @ dh2 @ dh3
@@ -1114,29 +1083,32 @@ class FiveDOFRobot:
                 # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
                 
                 #theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
-                theta_4 = wraptopi((np.pi/2) + np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
+                theta_4 = wraptopi(np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
                 #theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
-                theta_5 = np.arctan2(r_3_5[2,0], r_3_5[2,1])
+                theta_5 = wraptopi(np.arctan2(r_3_5[2,0], r_3_5[2,1]))
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
                 theta4_list.append(theta_4)
                 theta5_list.append(theta_5)
                 self.calc_forward_kinematics(self.theta, radians=True)
+            
 
-        print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
-        
+        # print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
+        print(f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}")
+
+        print(theta5_list[1])
         match soln:
             case 0:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0] # good
             case 1:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[0], theta5_list[0] 
             case 2:   
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[1]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[0]
             case 3:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[0] #DUPLICATE
             case 4:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[1]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[0] #DUPLICATE
             case 5:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[1]
+                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[0]
             case 6:
                 self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[0], theta5_list[0]
             case 7:
