@@ -1095,6 +1095,11 @@ class FiveDOFRobot:
         # print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
         print(f"theta  2 and 3 are {np.rad2deg(theta2_list)}, {np.rad2deg(theta3_list)}")
         print(f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}")
+        solutions = []
+        solutions.append([theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1]])
+        solutions.append([theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1]])
+        solutions.append([theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2]])
+        solutions.append([theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2]])
 
         match soln:
             case 0:
@@ -1116,7 +1121,16 @@ class FiveDOFRobot:
             # case _:
                 print("We should give up coding")
         
-        self.calc_forward_kinematics(self.theta, radians=True)
+        # error_list = []
+        # for i, solution in enumerate(solutions):
+        #     position = [EE.x, EE.y, EE.z, EE.rotx, EE.roty, EE.rotz]
+        #     self.calc_forward_kinematics(solution, radians=True)
+        #     calc_pos = [self.ee.x, self.ee.y, self.ee.z, self.ee.rotx, self.ee.roty, self.ee.rotz]
+        #     error_list.append([np.linalg.norm(np.array(position) - np.array(calc_pos)), i])
+        # sorted_indices = np.argsort(np.array(error_list)[:, 0])
+        # sols = sorted_indices[:2]
+        # sol = sols[soln]
+        self.calc_forward_kinematics(self.theta, radians=True) # because we have this at the end, this will always be used now (CASE SWITCH DON'T MATTER)
         
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
