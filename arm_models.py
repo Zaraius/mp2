@@ -1,7 +1,17 @@
-from math import sqrt, sin, cos, atan, atan2, degrees, pi
+from math import sqrt, sin, cos, atan, atan2, degrees
+import time
+from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
-from helper_fcns.utils import EndEffector, rotm_to_euler, euler_to_rotm, check_joint_limits, dh_to_matrix, near_zero, wraptopi
+from helper_fcns.utils import (
+    EndEffector,
+    rotm_to_euler,
+    euler_to_rotm,
+    check_joint_limits,
+    dh_to_matrix,
+    near_zero,
+    wraptopi,
+)
 
 PI = 3.1415926535897932384
 # np.set_printoptions(precision=3)
@@ -185,6 +195,9 @@ class Robot:
 
         # draw the points
         for i in range(len(self.robot.points)):
+            # print(f"{self.robot.points[i][0]=}")
+            # print(f"{self.robot.points[i][1]=}")
+            # print(f"{self.robot.points[i][2]=}")
             self.point_x.append(self.robot.points[i][0])
             self.point_y.append(self.robot.points[i][1])
             self.point_z.append(self.robot.points[i][2])
@@ -211,7 +224,7 @@ class Robot:
         self.draw_ref_line([EE.x, EE.y, EE.z], self.sub1, ref='xyz')
 
         # add text at bottom of window
-        pose_text = "End-effector Pose:      [ "
+        pose_text = "EE:[ "
         pose_text += f"X: {round(EE.x,4)},  "
         pose_text += f"Y: {round(EE.y,4)},  "
         pose_text += f"Z: {round(EE.z,4)},  "
@@ -797,7 +810,6 @@ class FiveDOFRobot:
         self.DH = np.zeros((5, 4))
         self.T = np.zeros((self.num_dof, 4, 4))
 
-    
     def calc_forward_kinematics(self, theta: list, radians=False):
         """
         Calculate forward kinematics based on the provided joint angles.
@@ -839,12 +851,199 @@ class FiveDOFRobot:
             EE: EndEffector object containing desired position and orientation.
             soln: Optional parameter for multiple solutions (not implemented).
         """
+
+        # initializing a list for each theta
+        theta1_list = []
+        theta2_list = []
+        theta3_list = []
+        theta4_list = []
+        theta5_list = []
+
+        # calculating theta 1 value and then adding it to the list
+        theta_1 = np.arctan2(EE.y, EE.x)
+        theta1_list.append(theta_1)
+
+        # calculating and adding the other theta 1 value
+        if theta_1 > 0:
+            theta1_list.append(theta_1 - np.pi)  # angle wrapping case 1
+        else:
+            theta1_list.append(theta_1 + np.pi)  # angle wrapping case 2
+
+        # find rotation of EE matrix
+        EE_euler = (EE.rotx, EE.roty, EE.rotz)
+        EE_rot = np.array(euler_to_rotm(EE_euler))
+
+        # find position of joint 3 in base frame
+        P_EE = np.array([EE.x, EE.y, EE.z])
+        k = np.array([0, 0, 1])
+
+        # subtracting l4 and l5 in the z direction from the end effector pos
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+
+        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
+        P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
+        L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
+
+        # Check if point is reachable
+        max_reach = self.l2 + self.l3  # maximum reach
+        min_reach = abs(self.l2 - self.l3)  # minimum reach
+
+        if L > max_reach or L < min_reach:
+            print(
+                f"Point unreachable: Distance {L:.3f} is outside arm's reach [{min_reach:.3f}, {max_reach:.3f}]"
+            )
+
+        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
+        alpha = np.arctan2(delta_z, delta_x)
+
+        # calculate phi using law of cosine
+        phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
+        # adding positive and negative variations of theta 3 to a list
+        theta3_list.append(np.pi - phi)
+        theta3_list.append(-(np.pi - phi))
+
+        # calculating theta 2
+        # first solution of theta 2
+        gamma1 = self.l3 * sin(theta3_list[0])
+        beta1 = np.arcsin(gamma1 / L)
+        theta2_list.append(-(alpha - beta1 - np.pi / 2))
+
+        # second solution of theta 2
+        gamma2 = self.l3 * sin(theta3_list[1])
+        beta2 = np.arcsin(gamma2 / L)
+        theta2_list.append(alpha + beta2 - np.pi / 2)
+
+
+
+        # multiply wrist pos * H_6_0
+
+        # we have end effector pos and rotation (frame)
+        # euler to rotm to make the DH matrix using ^
+        # Inverse that so you have H_6_0
+        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
+        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
+        # then we can
+
+        # compute r_0-3
+
+        # looping through all combinations of theta 1 2 to get all combinations of theta 4 and 5
+        for i in range(2):
+            for j in range(2):
+                theta_1 = theta1_list[i]
+                theta_2 = theta2_list[j]
+                theta_3 = theta3_list[j]
+                # DH matrix for current theta values
+                dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
+                dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, 0])
+                dh3 = dh_to_matrix([-theta_3, 0, self.l3, 0])
+
+                # getting the rotation matrix of 0 to 3 from dh matrix
+                t_0_3 = dh1 @ dh2 @ dh3
+                r_0_3 = t_0_3[:3, :3]
+                # getting the rotation matrix from 3 to 5
+                r_3_5 = np.transpose(r_0_3) @ EE_rot
+
+                # EXPLAIN THIS IN WORDS
+                theta_4 = wraptopi(np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
+
+                theta_5 = wraptopi(np.arctan2(r_3_5[2, 0], r_3_5[2, 1]))
+
+                # adding theta 4 and 5 to their list
+                theta4_list.append(theta_4)
+                theta5_list.append(theta_5)
+
+
+        # adding all combinations of theta values into the solutions list
+        solutions = []
+        solutions.append(
+            [
+                theta1_list[1],
+                theta2_list[0],
+                theta3_list[0],
+                theta4_list[2],
+                theta5_list[1],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[1],
+                theta2_list[1],
+                theta3_list[1],
+                theta4_list[2],
+                theta5_list[1],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[0],
+                theta2_list[0],
+                theta3_list[0],
+                theta4_list[1],
+                theta5_list[2],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[0],
+                theta2_list[1],
+                theta3_list[1],
+                theta4_list[1],
+                theta5_list[2],
+            ]
+        )
+
+        # initializing error list
+        error_list = []
+        # looping through each solution
+        for i, solution in enumerate(solutions):
+            # calculationg the position of this solution
+            position = [EE.x, EE.y, EE.z, EE.rotx, EE.roty, EE.rotz]
+            self.calc_forward_kinematics(solution, radians=True)
+            calc_pos = [
+                self.ee.x,
+                self.ee.y,
+                self.ee.z,
+                self.ee.rotx,
+                self.ee.roty,
+                self.ee.rotz,
+            ]
+            # calculating the error from desired and actual position and adding it to the list
+            error_list.append(
+                [np.linalg.norm(np.array(position) - np.array(calc_pos)), i]
+            )
+        # sorting the error
+        sorted_indices = np.argsort(np.array(error_list)[:, 0])
+
+        # displaying the 4 positions in sorted order for each button
+        if soln == 0:
+            self.calc_forward_kinematics(solutions[sorted_indices[0]], radians=True)
+        elif soln == 1:
+            self.calc_forward_kinematics(solutions[sorted_indices[1]], radians=True)
+        elif soln == 2:
+            self.calc_forward_kinematics(solutions[sorted_indices[2]], radians=True)
+        elif soln == 3:
+            self.calc_forward_kinematics(solutions[sorted_indices[3]], radians=True)
+
+    def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
+        """Calculate numerical inverse kinematics based on input coordinates."""
+
         ########################################
 
         # insert your code here
+        # FIX FORWARD KINEMATICS TO BE STRAIGHT UP
+        # Solve theta 1
 
         ########################################
 
+        H = np.zeros((4, 4))
+        H[:3, :3] = EE_rot
+        H[:3, 3] = [EE.x, EE.y, EE.z]
+        H[3, :] = [0, 0, 0, 1]
+        # H = np.block([[EE_rot, EE_euler],
+        #       [np.array([[0, 0, 0, 1]])]])
+        # print(f"{H=}")
+        hInv = np.linalg.inv(H)
 
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """ Calculate numerical inverse kinematics based on input coordinates. """
@@ -854,23 +1053,42 @@ class FiveDOFRobot:
         pos_des = [EE.x, EE.y, EE.z]
         print(f"running numerical inverse for {pos_des}")
 
-        # theta to update and check against
-        
-        for _ in range(ilimit):
-            # solve for error
-            pos_current = self.solve_forward_kinematics(self.theta)
-            error = pos_des - pos_current[0:3]
-            # If error outside tol, recalculate theta (Newton-Raphson)
-            if np.linalg.norm(error) > tol:
-                self.theta = self.theta + np.dot(self.inverse_jacobian(pseudo=True), error)
-            # If error is within tolerence: break
-            else:
-                break
+        # print(wrist)
 
-        ########################################
+        x, y = EE.x, EE.y
+        theta_1 = np.arctan2(y, x)
+        self.theta[0] = theta_1  # replace this and add it to list
+        # check thetas with forward kinematics and see if it actually reaches desired position correct
 
+        # Find rotation of EE matrix
+        EE_euler = [EE.rotx, EE.roty, EE.rotz]
+        EE_rot = euler_to_rotm(EE_euler)
+        # print(f"{EE_rot=}")
+
+        # Find Position of joint 3 in base frame
+        P_EE = np.array([EE.x, EE.y, EE.z])
+        k = np.array([0, 0, 1])
+        # print(f"{EE_rot @ k=}")
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+
+        # print(f"{P_3=}")
+        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
+
+        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
+        P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
+        L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
+        # print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
+        delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
+        alpha = np.arctan2(delta_z, delta_x)
+        # print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
+        phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
+        theta_3 = np.pi = phi
+        gamma = self.l3 * sin(theta_3)
+        beta = np.arcsin(gamma / L)
+        theta_2 = alpha - beta
+        self.theta[1], self.theta[2] = theta_2, theta_3
         self.calc_forward_kinematics(self.theta, radians=True)
-        
 
     def calc_velocity_kinematics(self, vel: list):
         """
@@ -1054,7 +1272,7 @@ class FiveDOFRobot:
 
         # Calculate the EE axes in space (in the base frame)
         self.EE = [self.ee.x, self.ee.y, self.ee.z]
-        self.EE_axes = np.array([self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)])
-
-
-
+        # print(f"{self.points=}")
+        self.EE_axes = np.array(
+            [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
+        )
