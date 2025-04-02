@@ -135,8 +135,15 @@ class Visualizer:
         pose_labels = ["X(m)", "Y(m)", "Z(m)", "RotX(rad)", "RotY(rad)", "RotZ(rad)"]
         # DEBUG_INIT = [-0.2394, -0.2394, 0.2422, 0, -1.2217, 0.785]
         # DEBUG_INIT = [-.0959,-.0169,.4802,-.4164,-.3272,1.116]
-        DEBUG_INIT = [-0.0911, -0.0444, 0.2524, -1.8503, 0.3535, 1.9256] 
+        # DEBUG_INIT = [-0.0861, -0.0861, 0.4618, -0.6155, -0.5236, 1.7407] DONE
 
+        # DEBUG_INIT = [-0.1868, -0.0091, 0.2524, -1.8503, 0.3535, 1.9256]
+
+        DEBUG_INIT = [-0.1595, 0.014, 0.463, -0.281, -0.4478, 0.5007]
+        # DEBUG_INIT = [-0.1295, -0.1295, 0.4331, -0.6155, -0.5236, 1.7407]
+        # DEBUG_INIT = []
+        # DEBUG_INIT = [-0.1047, -0.0092, 0.4919, -0.316, -0.3477, 0.1801]
+        # DEBUG_INIT = [-0.0501, 0, 0.4239, 0, -0.5544, 0]
         for i in range(len(pose_labels)):
             position_label = ttk.Label(self.control_frame, text=pose_labels[i] + ":")
             position_label.grid(column=0, row=row_number, sticky=tk.W)
@@ -161,32 +168,32 @@ class Visualizer:
             self.control_frame, text="3", command=self.solve_IK3
         )
         self.ik3_move_button.grid(column=2, row=row_number)
-        
+
         self.ik4_move_button = ttk.Button(
             self.control_frame, text="4", command=self.solve_IK4
         )
         self.ik4_move_button.grid(column=3, row=row_number)
-        
-        self.ik5_move_button = ttk.Button(
-            self.control_frame, text="5", command=self.solve_IK5
-        )
-        self.ik5_move_button.grid(column=4, row=row_number)
-        
-        self.ik6_move_button = ttk.Button(
-            self.control_frame, text="6", command=self.solve_IK6
-        )
-        self.ik6_move_button.grid(column=5, row=row_number)
-        
-        self.ik7_move_button = ttk.Button(
-            self.control_frame, text="7", command=self.solve_IK7
-        )
-        self.ik7_move_button.grid(column=6, row=row_number)
-        
-        self.ik8_move_button = ttk.Button(
-            self.control_frame, text="8", command=self.solve_IK8
-        )
-        self.ik8_move_button.grid(column=7, row=row_number)
-        
+
+        # self.ik5_move_button = ttk.Button(
+        #     self.control_frame, text="5", command=self.solve_IK5
+        # )
+        # self.ik5_move_button.grid(column=4, row=row_number)
+
+        # self.ik6_move_button = ttk.Button(
+        #     self.control_frame, text="6", command=self.solve_IK6
+        # )
+        # self.ik6_move_button.grid(column=5, row=row_number)
+
+        # self.ik7_move_button = ttk.Button(
+        #     self.control_frame, text="7", command=self.solve_IK7
+        # )
+        # self.ik7_move_button.grid(column=6, row=row_number)
+
+        # self.ik8_move_button = ttk.Button(
+        #     self.control_frame, text="8", command=self.solve_IK8
+        # )
+        # self.ik8_move_button.grid(column=7, row=row_number)
+
         self.ik3_move_button = ttk.Button(
             self.control_frame, text="Num", command=self.numerical_solve
         )
@@ -289,7 +296,7 @@ class Visualizer:
         EE.rotz = float(self.pose_button[5].get())
 
         self.update_IK(pose=EE, soln=1)
-    
+
     def solve_IK3(self):
         """
         Solves the inverse kinematics for a given end-effector pose using the first solution.
@@ -303,6 +310,7 @@ class Visualizer:
         EE.rotz = float(self.pose_button[5].get())
 
         self.update_IK(pose=EE, soln=2)
+
     def solve_IK4(self):
         """
         Solves the inverse kinematics for a given end-effector pose using the first solution.
@@ -316,62 +324,61 @@ class Visualizer:
         EE.rotz = float(self.pose_button[5].get())
 
         self.update_IK(pose=EE, soln=3)
-        
-    def solve_IK5(self):
-        """
-        Solves the inverse kinematics for a given end-effector pose using the first solution.
-        """
-        EE = EndEffector()
-        EE.x = float(self.pose_button[0].get())
-        EE.y = float(self.pose_button[1].get())
-        EE.z = float(self.pose_button[2].get())
-        EE.rotx = float(self.pose_button[3].get())
-        EE.roty = float(self.pose_button[4].get())
-        EE.rotz = float(self.pose_button[5].get())
 
-        self.update_IK(pose=EE, soln=4)
-    def solve_IK6(self):
-        """
-        Solves the inverse kinematics for a given end-effector pose using the first solution.
-        """
-        EE = EndEffector()
-        EE.x = float(self.pose_button[0].get())
-        EE.y = float(self.pose_button[1].get())
-        EE.z = float(self.pose_button[2].get())
-        EE.rotx = float(self.pose_button[3].get())
-        EE.roty = float(self.pose_button[4].get())
-        EE.rotz = float(self.pose_button[5].get())
+    # def solve_IK5(self):
+    #     """
+    #     Solves the inverse kinematics for a given end-effector pose using the first solution.
+    #     """
+    #     EE = EndEffector()
+    #     EE.x = float(self.pose_button[0].get())
+    #     EE.y = float(self.pose_button[1].get())
+    #     EE.z = float(self.pose_button[2].get())
+    #     EE.rotx = float(self.pose_button[3].get())
+    #     EE.roty = float(self.pose_button[4].get())
+    #     EE.rotz = float(self.pose_button[5].get())
 
-        self.update_IK(pose=EE, soln=5)
-        
-    def solve_IK7(self):
-        """
-        Solves the inverse kinematics for a given end-effector pose using the first solution.
-        """
-        EE = EndEffector()
-        EE.x = float(self.pose_button[0].get())
-        EE.y = float(self.pose_button[1].get())
-        EE.z = float(self.pose_button[2].get())
-        EE.rotx = float(self.pose_button[3].get())
-        EE.roty = float(self.pose_button[4].get())
-        EE.rotz = float(self.pose_button[5].get())
+    #     self.update_IK(pose=EE, soln=4)
+    # def solve_IK6(self):
+    #     """
+    #     Solves the inverse kinematics for a given end-effector pose using the first solution.
+    #     """
+    #     EE = EndEffector()
+    #     EE.x = float(self.pose_button[0].get())
+    #     EE.y = float(self.pose_button[1].get())
+    #     EE.z = float(self.pose_button[2].get())
+    #     EE.rotx = float(self.pose_button[3].get())
+    #     EE.roty = float(self.pose_button[4].get())
+    #     EE.rotz = float(self.pose_button[5].get())
 
-        self.update_IK(pose=EE, soln=6)
-        
-    def solve_IK8(self):
-        """
-        Solves the inverse kinematics for a given end-effector pose using the first solution.
-        """
-        EE = EndEffector()
-        EE.x = float(self.pose_button[0].get())
-        EE.y = float(self.pose_button[1].get())
-        EE.z = float(self.pose_button[2].get())
-        EE.rotx = float(self.pose_button[3].get())
-        EE.roty = float(self.pose_button[4].get())
-        EE.rotz = float(self.pose_button[5].get())
+    #     self.update_IK(pose=EE, soln=5)
 
-        self.update_IK(pose=EE, soln=7)
-        
+    # def solve_IK7(self):
+    #     """
+    #     Solves the inverse kinematics for a given end-effector pose using the first solution.
+    #     """
+    #     EE = EndEffector()
+    #     EE.x = float(self.pose_button[0].get())
+    #     EE.y = float(self.pose_button[1].get())
+    #     EE.z = float(self.pose_button[2].get())
+    #     EE.rotx = float(self.pose_button[3].get())
+    #     EE.roty = float(self.pose_button[4].get())
+    #     EE.rotz = float(self.pose_button[5].get())
+
+    #     self.update_IK(pose=EE, soln=6)
+
+    # def solve_IK8(self):
+    #     """
+    #     Solves the inverse kinematics for a given end-effector pose using the first solution.
+    #     """
+    #     EE = EndEffector()
+    #     EE.x = float(self.pose_button[0].get())
+    #     EE.y = float(self.pose_button[1].get())
+    #     EE.z = float(self.pose_button[2].get())
+    #     EE.rotx = float(self.pose_button[3].get())
+    #     EE.roty = float(self.pose_button[4].get())
+    #     EE.rotz = float(self.pose_button[5].get())
+
+    #     self.update_IK(pose=EE, soln=7)
 
     def numerical_solve(self):
         """
@@ -479,7 +486,7 @@ class Visualizer:
                 self.v[0] = -1
             elif key == keyboard.Key.right:
                 self.v[0] = 1
-                
+
             elif hasattr(key, "char"):
                 if key.char == "w":
                     self.v[2] = 1

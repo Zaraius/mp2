@@ -878,49 +878,54 @@ class FiveDOFRobot:
         DH: Denavit-Hartenberg parameters for each joint.
         T: Transformation matrices for each joint.
     """
-    
+
     def __init__(self):
         """Initialize the robot parameters and joint limits."""
         # Link lengths
         # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
-        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105 # from hardware measurements
-        
+        self.l1, self.l2, self.l3, self.l4, self.l5 = (
+            0.155,
+            0.099,
+            0.095,
+            0.055,
+            0.105,
+        )  # from hardware measurements
+
         # Joint angles (initialized to zero)
         self.theta = [0, 0, 0, 0, 0]
-        
+
         # Joint limits (in radians)
         self.theta_limits = [
-            [-np.pi, np.pi], 
-            [-np.pi/3, np.pi], 
-            [-np.pi+np.pi/12, np.pi-np.pi/4], 
-            [-np.pi+np.pi/12, np.pi-np.pi/12], 
-            [-np.pi, np.pi]
+            [-np.pi, np.pi],
+            [-np.pi / 3, np.pi],
+            [-np.pi + np.pi / 12, np.pi - np.pi / 4],
+            [-np.pi + np.pi / 12, np.pi - np.pi / 12],
+            [-np.pi, np.pi],
         ]
 
         self.thetadot_limits = [
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2], 
-            [-np.pi*2, np.pi*2]
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
+            [-np.pi * 2, np.pi * 2],
         ]
-        
+
         # End-effector object
         self.ee = EndEffector()
-        
+
         # Robot's points
         self.num_dof = 5
         self.points = [None] * (self.num_dof + 1)
-        
+
         # Denavit-Hartenberg parameters and transformation matrices
         self.DH = np.zeros((5, 4))
         self.T = np.zeros((self.num_dof, 4, 4))
 
-    
     def calc_forward_kinematics(self, theta: list, radians=False):
         """
         Calculate forward kinematics based on the provided joint angles.
-        
+
         Args:
             theta: List of joint angles (in degrees or radians).
             radians: Boolean flag to indicate if input angles are in radians.
@@ -930,22 +935,24 @@ class FiveDOFRobot:
             self.theta = np.deg2rad(theta)
         else:
             self.theta = theta
-        
+
         # Apply joint limits
-        self.theta = [np.clip(th, self.theta_limits[i][0], self.theta_limits[i][1]) 
-                      for i, th in enumerate(self.theta)]
+        self.theta = [
+            np.clip(th, self.theta_limits[i][0], self.theta_limits[i][1])
+            for i, th in enumerate(self.theta)
+        ]
 
         # Set the Denavit-Hartenberg parameters for each joint
-        self.DH[0] = [self.theta[0], self.l1, 0, np.pi/2]
-        self.DH[1] = [self.theta[1] + np.pi/2, 0, self.l2, np.pi]
+        self.DH[0] = [self.theta[0], self.l1, 0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 0, self.l2, np.pi]
         self.DH[2] = [self.theta[2], 0, self.l3, np.pi]
-        self.DH[3] = [self.theta[3] - np.pi/2, 0, 0, -np.pi/2]
+        self.DH[3] = [self.theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
         self.DH[4] = [self.theta[4], self.l4 + self.l5, 0, 0]
 
         # Compute the transformation matrices
         for i in range(self.num_dof):
             self.T[i] = dh_to_matrix(self.DH[i])
-        
+
         # Calculate robot points (positions of joints)
         self.calc_robot_points()
 
@@ -957,96 +964,68 @@ class FiveDOFRobot:
             EE: EndEffector object containing desired position and orientation.
             soln: Optional parameter for multiple solutions (not implemented).
         """
-        # KENE SAID CALCULATE ALL 8 solutions and find 4 that are feasible
-        # theta 1 has 2 solutions
-        # theta 2,3 have 2 solutions (elbow up, elbow down)
-        # r has 2 solutions {r = -sqrt(x^2 + y^2), r = +sqrt(x^2 + y^2)}
-        ########################################
-        # Solve theta 1
 
-        EE_euler = [EE.rotx, EE.roty, EE.rotz]
-        EE_rot = euler_to_rotm(EE_euler)
-
-        H = np.zeros((4, 4))
-        H[:3, :3] = EE_rot
-        H[:3, 3] = [EE.x, EE.y, EE.z]
-        H[3, :] = [0, 0, 0, 1]
-        # H = np.block([[EE_rot, EE_euler],
-        #       [np.array([[0, 0, 0, 1]])]])
-        # print(f"{H=}")
-        hInv = np.linalg.inv(H)
-
-        wrist_pos = np.array([EE.x, EE.y, EE.z]) - (self.l4 + self.l5) * (EE_rot @ np.array([0, 0, 1]))
-
-        # R_0_6 = euler_to_rotm((EE.rotx, EE.roty, EE.rotz))
-        # z_rot = R_0_6[:, 2]
-        # d5 = self.l4 + self.l5
-        # pos_j4 = np.array([EE.x, EE.y, EE.z]) - (d5 * z_rot)
-        # print(f"{pos_j4=}")
-
-        x, y = EE.x, EE.y
-        theta_1 = np.arctan2(y, x)
-        
-        #  self.theta_limits = [
-        #     [-np.pi, np.pi],
-        #     [-np.pi / 3, np.pi],
-        #     [-np.pi + np.pi / 12, np.pi - np.pi / 4],
-        #     [-np.pi + np.pi / 12, np.pi - np.pi / 12],
-        #     [-np.pi, np.pi],
-        # ]
-        # two thetas with the smallest errors
+        # initializing a list for each theta
         theta1_list = []
         theta2_list = []
         theta3_list = []
         theta4_list = []
         theta5_list = []
-        
+
+        # calculating theta 1 value and then adding it to the list
+        theta_1 = np.arctan2(EE.y, EE.x)
         theta1_list.append(theta_1)
+
+        # calculating and adding the other theta 1 value
         if theta_1 > 0:
-            theta1_list.append(theta_1 - np.pi) #replace this and add it to list
-        else: 
-            theta1_list.append(theta_1 + np.pi) #replace this and add it to list
-        
-        
-        # check thetas with forward kinematics and see if it actually reaches desired position correct
-            
-        # Find rotation of EE matrix
+            theta1_list.append(theta_1 - np.pi)  # angle wrapping case 1
+        else:
+            theta1_list.append(theta_1 + np.pi)  # angle wrapping case 2
+
+        # find rotation of EE matrix
         EE_euler = (EE.rotx, EE.roty, EE.rotz)
         EE_rot = np.array(euler_to_rotm(EE_euler))
 
-        # Find Position of joint 3 in base frame
-        # l1 = .3, l5 = .12
+        # find position of joint 3 in base frame
         P_EE = np.array([EE.x, EE.y, EE.z])
-        print(f"position EE is: {P_EE}")
         k = np.array([0, 0, 1])
-        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
 
-        # print(f"{P_3=}")
-        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
+        # subtracting l4 and l5 in the z direction from the end effector pos
+        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
 
         # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
         L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        # print(f"L = {L} l2 {self.l2} l3 {self.l3}")
+
+        # Check if point is reachable
+        max_reach = self.l2 + self.l3  # maximum reach
+        min_reach = abs(self.l2 - self.l3)  # minimum reach
+
+        if L > max_reach or L < min_reach:
+            print(
+                f"Point unreachable: Distance {L:.3f} is outside arm's reach [{min_reach:.3f}, {max_reach:.3f}]"
+            )
+
         delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
         delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
         alpha = np.arctan2(delta_z, delta_x)
-        # print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
+
+        # calculate phi using law of cosine
         phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
-        
+        # adding positive and negative variations of theta 3 to a list
         theta3_list.append(np.pi - phi)
         theta3_list.append(-(np.pi - phi))
 
-        # first solution
+        # calculating theta 2
+        # first solution of theta 2
         gamma1 = self.l3 * sin(theta3_list[0])
         beta1 = np.arcsin(gamma1 / L)
-        theta2_list.append(-(alpha - beta1 - np.pi/2))
+        theta2_list.append(-(alpha - beta1 - np.pi / 2))
 
-        # second solution
+        # second solution of theta 2
         gamma2 = self.l3 * sin(theta3_list[1])
         beta2 = np.arcsin(gamma2 / L)
-        theta2_list.append(alpha + beta2 - np.pi/2)
-
+        theta2_list.append(alpha + beta2 - np.pi / 2)
 
         # print(f"Desired p {wrist_pos}")
         # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
@@ -1073,7 +1052,6 @@ class FiveDOFRobot:
                 dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, 0])
                 dh3 = dh_to_matrix([-theta_3, 0, self.l3, 0])
 
-            
                 t_0_3 = dh1 @ dh2 @ dh3
                 r_0_3 = t_0_3[:3, :3]
                 # print(f"{r_0_3=}")
@@ -1081,57 +1059,109 @@ class FiveDOFRobot:
                 r_3_5 = np.transpose(r_0_3) @ EE_rot
                 # print(f"{r_3_5=}")
                 # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
-                
-                #theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
+
+                # theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
                 theta_4 = wraptopi(np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
-                #theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
-                theta_5 = wraptopi(np.arctan2(r_3_5[2,0], r_3_5[2,1]))
+                # theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
+                theta_5 = wraptopi(np.arctan2(r_3_5[2, 0], r_3_5[2, 1]))
                 # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
                 theta4_list.append(theta_4)
                 theta5_list.append(theta_5)
-                self.calc_forward_kinematics(self.theta, radians=True)
-            
+                # self.calc_forward_kinematics(self.theta, radians=True)
 
         # print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
-        print(f"theta  2 and 3 are {np.rad2deg(theta2_list)}, {np.rad2deg(theta3_list)}")
-        print(f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}")
+        print(
+            f"theta  2 and 3 are {np.rad2deg(theta2_list)}, {np.rad2deg(theta3_list)}"
+        )
+        print(
+            f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}"
+        )
         solutions = []
-        solutions.append([theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1]])
-        solutions.append([theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1]])
-        solutions.append([theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2]])
-        solutions.append([theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2]])
+        solutions.append(
+            [
+                theta1_list[1],
+                theta2_list[0],
+                theta3_list[0],
+                theta4_list[2],
+                theta5_list[1],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[1],
+                theta2_list[1],
+                theta3_list[1],
+                theta4_list[2],
+                theta5_list[1],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[0],
+                theta2_list[0],
+                theta3_list[0],
+                theta4_list[1],
+                theta5_list[2],
+            ]
+        )
+        solutions.append(
+            [
+                theta1_list[0],
+                theta2_list[1],
+                theta3_list[1],
+                theta4_list[1],
+                theta5_list[2],
+            ]
+        )
 
-        match soln:
-            case 0:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1] # good
-            case 1:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1] 
-            case 2:   
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2] # good
-            case 3:
-                self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2] 
-            # case 4:
-            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[3], theta5_list[2] #DUPLICATE
-            # case 5:
-            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[3], theta5_list[3]
-            # case 6:
-            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[3]
-            # case 7:
-            #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[2]
-            # case _:
-                print("We should give up coding")
-        
-        # error_list = []
-        # for i, solution in enumerate(solutions):
-        #     position = [EE.x, EE.y, EE.z, EE.rotx, EE.roty, EE.rotz]
-        #     self.calc_forward_kinematics(solution, radians=True)
-        #     calc_pos = [self.ee.x, self.ee.y, self.ee.z, self.ee.rotx, self.ee.roty, self.ee.rotz]
-        #     error_list.append([np.linalg.norm(np.array(position) - np.array(calc_pos)), i])
-        # sorted_indices = np.argsort(np.array(error_list)[:, 0])
-        # sols = sorted_indices[:2]
-        # sol = sols[soln]
-        self.calc_forward_kinematics(self.theta, radians=True) # because we have this at the end, this will always be used now (CASE SWITCH DON'T MATTER)
-        
+        # match soln:
+        #     case 0:
+        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1] # good
+        #     case 1:
+        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1]
+        #     case 2:
+        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2] # good
+        #     case 3:
+        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2]
+        # case 4:
+        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[3], theta5_list[2] #DUPLICATE
+        # case 5:
+        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[3], theta5_list[3]
+        # case 6:
+        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[3]
+        # case 7:
+        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[2]
+        # case _:
+        # print("We should give up coding")
+
+        error_list = []
+        for i, solution in enumerate(solutions):
+            position = [EE.x, EE.y, EE.z, EE.rotx, EE.roty, EE.rotz]
+            self.calc_forward_kinematics(solution, radians=True)
+            calc_pos = [
+                self.ee.x,
+                self.ee.y,
+                self.ee.z,
+                self.ee.rotx,
+                self.ee.roty,
+                self.ee.rotz,
+            ]
+            error_list.append(
+                [np.linalg.norm(np.array(position) - np.array(calc_pos)), i]
+            )
+        sorted_indices = np.argsort(np.array(error_list)[:, 0])
+        print(sorted_indices)
+        sols = sorted_indices[:2]
+        print(sols)
+        if soln == 0:
+            self.calc_forward_kinematics(solutions[sorted_indices[0]], radians=True)
+        elif soln == 1:
+            self.calc_forward_kinematics(solutions[sorted_indices[1]], radians=True)
+        elif soln == 2:
+            self.calc_forward_kinematics(solutions[sorted_indices[2]], radians=True)
+        elif soln == 3:
+            self.calc_forward_kinematics(solutions[sorted_indices[3]], radians=True)
+
     def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
         """Calculate numerical inverse kinematics based on input coordinates."""
 
@@ -1140,7 +1170,6 @@ class FiveDOFRobot:
         # insert your code here
         # FIX FORWARD KINEMATICS TO BE STRAIGHT UP
         # Solve theta 1
- 
 
         EE_euler = [EE.rotx, EE.roty, EE.rotz]
         EE_rot = euler_to_rotm(EE_euler)
@@ -1160,7 +1189,7 @@ class FiveDOFRobot:
 
         x, y = EE.x, EE.y
         theta_1 = np.arctan2(y, x)
-        self.theta[0] = theta_1 #replace this and add it to list
+        self.theta[0] = theta_1  # replace this and add it to list
         # check thetas with forward kinematics and see if it actually reaches desired position correct
 
         # Find rotation of EE matrix
@@ -1394,6 +1423,3 @@ class FiveDOFRobot:
         self.EE_axes = np.array(
             [self.T_ee[:3, i] * 0.075 + self.points[-1][:3] for i in range(3)]
         )
-
-
-
