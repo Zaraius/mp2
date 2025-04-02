@@ -1027,8 +1027,7 @@ class FiveDOFRobot:
         beta2 = np.arcsin(gamma2 / L)
         theta2_list.append(alpha + beta2 - np.pi / 2)
 
-        # print(f"Desired p {wrist_pos}")
-        # NOTE CALCULATE POSITION FOR ALL THETA VALUES 1-3
+
 
         # multiply wrist pos * H_6_0
 
@@ -1040,42 +1039,35 @@ class FiveDOFRobot:
         # then we can
 
         # compute r_0-3
+
+        # looping through all combinations of theta 1 2 to get all combinations of theta 4 and 5
         for i in range(2):
             for j in range(2):
                 theta_1 = theta1_list[i]
                 theta_2 = theta2_list[j]
                 theta_3 = theta3_list[j]
-                # dh1 = dh_to_matrix([theta_1, self.l1, 0, -np.pi / 2])
-                # dh2 = dh_to_matrix([theta_2, 0, self.l2, np.pi])
-                # dh3 = dh_to_matrix([theta_3, 0, self.l3, np.pi])
+                # DH matrix for current theta values
                 dh1 = dh_to_matrix([theta_1, self.l1, 0, np.pi / 2])
                 dh2 = dh_to_matrix([theta_2 + np.pi / 2, 0, self.l2, 0])
                 dh3 = dh_to_matrix([-theta_3, 0, self.l3, 0])
 
+                # getting the rotation matrix of 0 to 3 from dh matrix
                 t_0_3 = dh1 @ dh2 @ dh3
                 r_0_3 = t_0_3[:3, :3]
-                # print(f"{r_0_3=}")
-
+                # getting the rotation matrix from 3 to 5
                 r_3_5 = np.transpose(r_0_3) @ EE_rot
-                # print(f"{r_3_5=}")
-                # print(f"c = {r_3_5[0,2]} f = {r_3_5[1,2]} g = {r_3_5[2,0]} h = {r_3_5[2,1]}")
 
-                # theta_4 = wraptopi( np.arctan2(r_3_5[0,2], r_3_5[1,2]))
+                # EXPLAIN THIS IN WORDS
                 theta_4 = wraptopi(np.arctan2(r_3_5[1, 2], r_3_5[0, 2]))
-                # theta_4 = -np.arctan2(r_3_5[0,2], r_3_5[1,2])
+
                 theta_5 = wraptopi(np.arctan2(r_3_5[2, 0], r_3_5[2, 1]))
-                # print(f"theta 1, 2, 3 are {theta_1}, {theta_2}, {theta_3}")
+
+                # adding theta 4 and 5 to their list
                 theta4_list.append(theta_4)
                 theta5_list.append(theta_5)
-                # self.calc_forward_kinematics(self.theta, radians=True)
 
-        # print(f"theta 1, 2, 3, 4, 5 are {theta1_list}, {theta2_list}, {theta3_list}, {self.theta[3]}, {self.theta[4]}")
-        print(
-            f"theta  2 and 3 are {np.rad2deg(theta2_list)}, {np.rad2deg(theta3_list)}"
-        )
-        print(
-            f"theta  4 and 5 are {np.rad2deg(theta4_list)}, {np.rad2deg(theta5_list)}"
-        )
+
+        # adding all combinations of theta values into the solutions list
         solutions = []
         solutions.append(
             [
@@ -1114,28 +1106,11 @@ class FiveDOFRobot:
             ]
         )
 
-        # match soln:
-        #     case 0:
-        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[1] # good
-        #     case 1:
-        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[1]
-        #     case 2:
-        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[0], theta3_list[0], theta4_list[1], theta5_list[2] # good
-        #     case 3:
-        #         self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[1], theta5_list[2]
-        # case 4:
-        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[3], theta5_list[2] #DUPLICATE
-        # case 5:
-        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[0], theta2_list[1], theta3_list[1], theta4_list[3], theta5_list[3]
-        # case 6:
-        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[0], theta3_list[0], theta4_list[2], theta5_list[3]
-        # case 7:
-        #     self.theta[0], self.theta[1], self.theta[2], self.theta[3], self.theta[4] = theta1_list[1], theta2_list[1], theta3_list[1], theta4_list[2], theta5_list[2]
-        # case _:
-        # print("We should give up coding")
-
+        # initializing error list
         error_list = []
+        # looping through each solution
         for i, solution in enumerate(solutions):
+            # calculationg the position of this solution
             position = [EE.x, EE.y, EE.z, EE.rotx, EE.roty, EE.rotz]
             self.calc_forward_kinematics(solution, radians=True)
             calc_pos = [
@@ -1146,13 +1121,14 @@ class FiveDOFRobot:
                 self.ee.roty,
                 self.ee.rotz,
             ]
+            # calculating the error from desired and actual position and adding it to the list
             error_list.append(
                 [np.linalg.norm(np.array(position) - np.array(calc_pos)), i]
             )
+        # sorting the error
         sorted_indices = np.argsort(np.array(error_list)[:, 0])
-        print(sorted_indices)
-        sols = sorted_indices[:2]
-        print(sols)
+
+        # displaying the 4 positions in sorted order for each button
         if soln == 0:
             self.calc_forward_kinematics(solutions[sorted_indices[0]], radians=True)
         elif soln == 1:
