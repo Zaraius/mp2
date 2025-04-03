@@ -1122,7 +1122,6 @@ class FiveDOFRobot:
             ilimit: int defining maximum number of iterations to find allowable solution
         """
 
-        ########################################
         # find desired EE position
         pos_des = [EE.x, EE.y, EE.z]
 
@@ -1140,7 +1139,6 @@ class FiveDOFRobot:
             else:
                 break
 
-        ########################################
 
         self.calc_forward_kinematics(self.theta, radians=True)
 
