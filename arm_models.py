@@ -915,17 +915,13 @@ class FiveDOFRobot:
         theta2_list.append(alpha + beta2 - np.pi / 2)
 
 
-
-        # multiply wrist pos * H_6_0
-
-        # we have end effector pos and rotation (frame)
-        # euler to rotm to make the DH matrix using ^
-        # Inverse that so you have H_6_0
-        # H @ [0 0 -l4-l5 1] --> [x y z] (in frame 0)
-        # we can inverse the 0_6 to make it a 6_0 which means we now can get the base position from the end effector
-        # then we can
-
-        # compute r_0-3
+        # We compute R_0_3 by plugging in thetas 1 2 and 3 into the rotation matrix
+        # multiply wrist pos: R_3_5 = (R_0_3)^T * R_0_6 (transpose is the same thing as inverse in this case)
+        # R_0_5 is the end effector orientation (found from the eulertorotm function of the end effector)
+        # Calculate R_3_5, gives a 3x3 matrix of values. These values mean nothing unless you know the functions 
+        # they are associated with. We can matrix multiply symbolically R_3_4 and R_4_5 which 
+        # will symbolically make R_3_5. With these, there are a few cos and sin functions that standalone with a theta 
+        # (ex. r_3_5[1,2] = sin(theta4)). With some simple inverse trigonometric functions, we can find what the theta values are.       
 
         # looping through all combinations of theta 1 2 to get all combinations of theta 4 and 5
         for i in range(2):
