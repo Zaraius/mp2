@@ -1,95 +1,68 @@
-# Module 1&2: Forward and Inverse Kinematics for Robot Manipulators
+# Module 2: Implementation of Inverse Kinematics in Simulator
+By Xavier Nishikawa, Zaraius Billimoria, & Julian Shah
+based on code from Kenechukwu Mbanisi
 
-This repository accompanies the class activities in modules 1&2 focusing on the following:
-1. **Forward position kinematics (FPK)**
-2. **Forward velocity kinematics (FVK)**
-3. **Inverse position kinematics (IPK)**
-4. Applied on three different arm configurations: **Two-DOF arm, SCARA robot, 5-DOF Hiwonder robot**
+This project is the mini project 2 code for the Fundamentals of Robotics class taught by Kenechukwu Mbanisi (Kene). 
+It builds of the simulator built by Kene to implement analytical and numerical inverse kinematics for a 5-DOF robot
+arm. While there is also a framework for 2-DOF and SCARA type robot arms, it isn't used. 
 
-This repository provides the **visualization tool (viz tool)** for testing your kinematics modeling and analysis code.
+### Disclosure for AI
 
-## Viz Tool
+No AI models were used in developing the code.
 
 <img src = "media/FPK.png">
+An example for what the visualization tool looks like
 
-## Setting up your PC
+## Requirements
 
-- You can complete this assignment on any computer OS: Mac, Windows, Linux, etc. All you need is Python 3 interpreter (code was tested using Python 3.10).
+* Step 1: Install Python 3 (if not already installed)
+* Step 2: Locally download this repository from Github
+* Step 3: Install all required Python packages using pip (or manually)
 
-#### Step 0 (Optional): Install VScode
-- Install Visual Studio Code (I strongly recommend using this, if you don’t already do. It’s the best IDE in my humble opinion)
-- Follow the instructions [here to install.](https://code.visualstudio.com/download)
+## How to Run
 
-
-
-#### Step 1: Install Python 3 (if not already installed)
-- First, check if you have Python3, to do that, open your terminal and type:
-```bash
-$ python3 --version     # <--- type this
-Python 3.10.12          # <--- you should see something like this
-```
-- If you don’t have Python installed, follow this [tutorial here](https://realpython.com/installing-python/) to install it.
-
-
-#### Step 2: Create a virtual environment
-- This is technically optional, but I strongly recommend that you create a new python virtual environment for this course.
-- Follow this [tutorial here](https://docs.python.org/3/tutorial/venv.html).
-
-
-#### Step 3: Get this repository from Github
-- I recommend you fork this repository to the account of one of your teammates and then you all can clone from the forked version.
-- Follow [this tutorial](https://ftc-docs.firstinspires.org/en/latest/programming_resources/tutorial_specific/android_studio/fork_and_clone_github_repository/Fork-and-Clone-From-GitHub.html) to understand how to fork and clone repositories
-
-
-#### Step 4: Install all required Python packages
-```bash
-# first: make sure you have activated the virtual environment (if you used one). See step 2 tutorial
-
-# cd to the project folder
-$ cd arm-kinematics-module
-
-# install all required packages from requirements.txt
-$ pip install -r requirements.txt
-```
-
-
-### How to Run
-
-- If setup worked well, you should be able to run the main script with the command below:
+- To run the main scripts, use the command below
 ``` bash
-$ python main_arm.py 
-# this configures the two-DOF arm
+$ python3 main_arm.py --robot_type 5-dof
+# this configures the five-DOF arm
 ```
 
-- There are options to pass command-line arguments to configure the viz tool to other arm configurations, i.e., SCARA and 5-DOF arm
-
-``` bash
-$ python main_arm.py -h
-
-usage: main_arm.py [-h] [--robot_type ROBOT_TYPE] 
-
-options:
-  -h, --help            show this help message and exit
-  --robot_type ROBOT_TYPE
-                        insert robot type, e.g., '2-dof', 'scara', '5-dof'
-```
-- Example, for SCARA robot:
-```bash
-$ python main_arm.py --robot_type scara
-```
 
 ### Usage Guide
 
 <img src = "media/arm-kinematics-viz-tool.png">
 
 
-### Generative AI Use Disclosure
-- Please make sure to briefly describe what and how generative AI tools were used in developing the contents of your work.
-- Acceptable use:
-    - To research a related topic to the subject at hand
-    - As a substitute to "Stackoverflow" guides on quick programming how-tos, etc.
-- Unacceptable use:
-    - Directly copying large swaths of code from a ChatGPT response to a prompt in part or entirely related to the assignment's problem
 
-For instance, I used ChatGPT in generating the docstrings for the functions in this repository.
+## **Forward position kinematics (FPK)**
 
+Our implementation of inverse numerical kinematics uses forward kinematics to calculate the error of the robot position.
+The forward kinematic implementation is copied from Kene's implementation and is not solely our work. Interfacing with
+the FPK can be done through the sliders in the GUI (graphical user interface). 
+
+## **Inverse position kinematics (IPK)**
+
+### Analytical
+
+The ananlytical inverse kinematics uses a geometric approach to solve for the desired joint angles of a 5-DOF Hiwonder
+robot arm. This results in multiple solutions, with only one or two feasible for physical constraints to meet. Such 
+constraints are, for example, joint limits and link lengths.
+
+You may notice that there are two buttons in the Viz tool to solve for the analytical inverse kinematics. When there are
+two real solutions for the robot to move two, both buttons will appropriately move the robot. However, there isn't always
+two solutions because of joint limits and joint lengths provide physical limitations. Assuming that an imputted point is
+within a set of real solutions for a 5-DOF arm, there will always be at least one solution that will work (one of the buttons).
+
+Note: you can use the FPK to move to a real point, input those points into the IK area, and reset the arm before solving 
+the IK solutions. This will ensure that you are inputting a real point.
+
+### Numerical
+
+The numerical inverse kinematics approach involves the Newton-Raphson method for optimization. In essence, we calculate
+the current position of the end effector (EE) in relation to the desired position and multiply the error by the jacobian
+to get new joint positions. This then happens until the EE is within an error threshold or an iteration limit is reached.
+It is possible that upon inputting a desired and reachable point that it requires a few presses of the NUM SOLVE button
+until the final solution is reached. This is because the path to the desired position may involve passing through
+singularities which will erratically move the robot due to a product of a pseudo inverse jacobian used for calculations.
+
+Note: orientation is not accounted for in this approach.
