@@ -57,7 +57,8 @@ Note: you can use the FPK to move to a real point, input those points into the I
 the IK solutions. This will ensure that you are inputting a real point.
 
 Analytical IK Pose
-https://youtu.be/9M7_NQAeitA
+[![Watch the video](https://img.youtube.com/vi/9M7_NQAeitA/maxresdefault.jpg)](https://youtu.be/9M7_NQAeitA)
+
 
 ### Numerical
 
@@ -71,4 +72,4 @@ singularities which will erratically move the robot due to a product of a pseudo
 Note: orientation is not accounted for in this approach.
 
 Numerical IK Pose
-https://youtu.be/acg5ETc1kZA
+[![Watch the video](https://img.youtube.com/vi/acg5ETc1kZA/maxresdefault.jpg)](https://youtu.be/acg5ETc1kZA)
