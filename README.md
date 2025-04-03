@@ -44,20 +44,22 @@ the FPK can be done through the sliders in the GUI (graphical user interface).
 
 ### Analytical
 
-The ananlytical inverse kinematics uses a geometric approach to solve for the desired joint angles of a 5-DOF Hiwonder
+The analytical inverse kinematics uses a geometric approach to solve for the desired joint angles of a 5-DOF Hiwonder
 robot arm. This results in multiple solutions, with only one or two feasible for physical constraints to meet. Such 
 constraints are, for example, joint limits and link lengths.
 
 You may notice that there are two buttons in the Viz tool to solve for the analytical inverse kinematics. When there are
 two real solutions for the robot to move two, both buttons will appropriately move the robot. However, there isn't always
-two solutions because of joint limits and joint lengths provide physical limitations. Assuming that an imputted point is
+two solutions because of joint limits and joint lengths provide physical limitations. Assuming that an inputted point is
 within a set of real solutions for a 5-DOF arm, there will always be at least one solution that will work (one of the buttons).
 
 Note: you can use the FPK to move to a real point, input those points into the IK area, and reset the arm before solving 
 the IK solutions. This will ensure that you are inputting a real point.
 
-<video src="ikPose2.mp4" width="320" height="240" controls>video</video>
-
+<figure class="video_container">
+  <iframe src="ikPose2.mp4" frameborder="0" allowfullscreen="true"> 
+</iframe>
+</figure>
 
 ### Numerical
 
@@ -70,4 +72,7 @@ singularities which will erratically move the robot due to a product of a pseudo
 
 Note: orientation is not accounted for in this approach.
 
-<video src="numericalPose2.mp4" width="320" height="240" controls>video</video>
+<figure class="video_container">
+  <iframe src="numericalPose2.mp4" frameborder="0" allowfullscreen="true"> 
+</iframe>
+</figure>
