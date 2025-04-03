@@ -56,7 +56,7 @@ within a set of real solutions for a 5-DOF arm, there will always be at least on
 Note: you can use the FPK to move to a real point, input those points into the IK area, and reset the arm before solving 
 the IK solutions. This will ensure that you are inputting a real point.
 
-<video src="ikPose2.mp4" width="320" height="240" controls></video>
+<video src="ikPose2.mp4" width="320" height="240" controls>video</video>
 
 
 ### Numerical
@@ -70,4 +70,4 @@ singularities which will erratically move the robot due to a product of a pseudo
 
 Note: orientation is not accounted for in this approach.
 
-<video src="numericalPose2.mp4" width="320" height="240" controls></video>
+<video src="numericalPose2.mp4" width="320" height="240" controls>video</video>
