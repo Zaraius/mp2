@@ -1053,41 +1053,21 @@ class FiveDOFRobot:
         pos_des = [EE.x, EE.y, EE.z]
         print(f"running numerical inverse for {pos_des}")
 
-        # print(wrist)
+        # theta to update and check against
+        
+        for _ in range(ilimit):
+            # solve for error
+            pos_current = self.solve_forward_kinematics(self.theta)
+            error = pos_des - pos_current[0:3]
+            # If error outside tol, recalculate theta (Newton-Raphson)
+            if np.linalg.norm(error) > tol:
+                self.theta = self.theta + np.dot(self.inverse_jacobian(pseudo=True), error)
+            # If error is within tolerence: break
+            else:
+                break
 
-        x, y = EE.x, EE.y
-        theta_1 = np.arctan2(y, x)
-        self.theta[0] = theta_1  # replace this and add it to list
-        # check thetas with forward kinematics and see if it actually reaches desired position correct
+        ########################################
 
-        # Find rotation of EE matrix
-        EE_euler = [EE.rotx, EE.roty, EE.rotz]
-        EE_rot = euler_to_rotm(EE_euler)
-        # print(f"{EE_rot=}")
-
-        # Find Position of joint 3 in base frame
-        P_EE = np.array([EE.x, EE.y, EE.z])
-        k = np.array([0, 0, 1])
-        # print(f"{EE_rot @ k=}")
-        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
-
-        # print(f"{P_3=}")
-        # self.l1, self.l2, self.l3, self.l4, self.l5 = 0.30, 0.15, 0.18, 0.15, 0.12
-
-        # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
-        P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
-        L = np.sqrt(P3_x**2 + P3_y**2 + (P3_z - self.l1) ** 2)  # solve for L in 3D
-        # print(f"L = {L} l2 {self.l2} l3 {self.l3}")
-        delta_x = np.sqrt(P3_x**2 + P3_y**2)  # solve for x displacement from 1 to 3
-        delta_z = P3_z - self.l1  # solve for z displacement from 1 to 3
-        alpha = np.arctan2(delta_z, delta_x)
-        # print(f"{(self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3)=}")
-        phi = np.arccos((self.l2**2 + self.l3**2 - L**2) / (2 * self.l2 * self.l3))
-        theta_3 = np.pi = phi
-        gamma = self.l3 * sin(theta_3)
-        beta = np.arcsin(gamma / L)
-        theta_2 = alpha - beta
-        self.theta[1], self.theta[2] = theta_2, theta_3
         self.calc_forward_kinematics(self.theta, radians=True)
 
     def calc_velocity_kinematics(self, vel: list):
