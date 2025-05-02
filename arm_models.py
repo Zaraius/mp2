@@ -58,6 +58,11 @@ class Robot:
             self.num_joints = 5
             self.ee_coordinates = ["X", "Y", "Z", "RotX", "RotY", "RotZ"]
             self.robot = FiveDOFRobot()
+            
+        elif type == "6-dof":
+            self.num_joints = 6
+            self.ee_coordinates = ["X", "Y", "Z", "RotX", "RotY", "RotZ"]
+            self.robot = SixDOFRobot()
 
         self.origin = [0.0, 0.0, 0.0]
         self.axes_length = 0.04
@@ -1371,7 +1376,7 @@ class SixDOFRobot:
         # Joint limits (in radians)
         self.theta_limits = [
             [-np.pi, np.pi],
-            [-np, np.pi],
+            [-np.pi, np.pi],
             [-np.pi, np.pi],
             [-np.pi, np.pi],
             [-np.pi, np.pi],
@@ -1379,6 +1384,7 @@ class SixDOFRobot:
         ]
 
         self.thetadot_limits = [
+            [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
             [-np.pi * 2, np.pi * 2],
@@ -1446,6 +1452,7 @@ class SixDOFRobot:
         theta3_list = []
         theta4_list = []
         theta5_list = []
+        
 
         # calculating theta 1 value and then adding it to the list
         theta_1 = np.arctan2(EE.y, EE.x)
@@ -1668,6 +1675,8 @@ class SixDOFRobot:
         self.theta[2] += 0.02 * thetadot[2]
         self.theta[3] += 0.02 * thetadot[3]
         self.theta[4] += 0.02 * thetadot[4]
+        self.theta[5] += 0.02 * thetadot[5]
+
 
         # Recompute robot points based on updated joint angles
         self.calc_forward_kinematics(self.theta, radians=True)
@@ -1686,12 +1695,15 @@ class SixDOFRobot:
             theta = self.theta
 
         # Define DH parameters
-        DH = np.zeros((5, 4))
-        DH[0] = [theta[0], self.l1, 0, np.pi / 2]
-        DH[1] = [theta[1] + np.pi / 2, 0, self.l2, np.pi]
-        DH[2] = [theta[2], 0, self.l3, np.pi]
-        DH[3] = [theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
-        DH[4] = [theta[4], self.l4 + self.l5, 0, 0]
+        DH = np.zeros((6, 4))
+        
+        
+        DH[0] = [theta[0], 128.3 + 115, 0, np.pi / 2]
+        DH[1] = [theta[1] + np.pi / 2, 30, 280, np.pi]
+        DH[2] = [theta[2] + np.pi / 2, 20, 0, np.pi / 2]
+        DH[3] = [theta[3] + np.pi / 2, 140 + 105, 0, np.pi / 2]
+        DH[4] = [theta[4] + np.pi, 28.5 + 28.5, 0, np.pi / 2]
+        DH[5] = [theta[5] + np.pi / 2, 105 + 130, 0, 0]
 
         # Compute transformation matrices
         T = np.zeros((self.num_dof, 4, 4))
@@ -1794,18 +1806,19 @@ class SixDOFRobot:
                 theta[i] = np.deg2rad(theta[i])
 
         # DH parameters = [theta, d, a, alpha]
-        DH = np.zeros((5, 4))
-        DH[0] = [theta[0], self.l1, 0, np.pi / 2]
-        DH[1] = [theta[1] + np.pi / 2, 0, self.l2, np.pi]
-        DH[2] = [theta[2], 0, self.l3, np.pi]
-        DH[3] = [theta[3] - np.pi / 2, 0, 0, -np.pi / 2]
-        DH[4] = [theta[4], self.l4 + self.l5, 0, 0]
+        DH = np.zeros((6, 4))
+        DH[0] = [theta[0], 128.3 + 115, 0, np.pi / 2]
+        DH[1] = [theta[1] + np.pi / 2, 30, 280, np.pi]
+        DH[2] = [theta[2] + np.pi / 2, 20, 0, np.pi / 2]
+        DH[3] = [theta[3] + np.pi / 2, 140 + 105, 0, np.pi / 2]
+        DH[4] = [theta[4] + np.pi, 28.5 + 28.5, 0, np.pi / 2]
+        DH[5] = [theta[5] + np.pi / 2, 105 + 130, 0, 0]
 
         T = np.zeros((self.num_dof, 4, 4))
         for i in range(self.num_dof):
             T[i] = dh_to_matrix(DH[i])
 
-        return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @ np.array([0, 0, 0, 1])
+        return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @T[5] @ np.array([0, 0, 0, 1])
 
     def calc_robot_points(self):
         """Calculates the main arm points using the current joint angles"""
@@ -1819,7 +1832,7 @@ class SixDOFRobot:
             T_cumulative.append(T_cumulative[-1] @ self.T[i])
 
         # Calculate the robot points by applying the cumulative transformations
-        for i in range(1, 6):
+        for i in range(1, 7):
             self.points[i] = T_cumulative[i] @ self.points[0]
 
         # Calculate EE position and rotation

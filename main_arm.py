@@ -521,7 +521,7 @@ def get_robot_type(robot_type: str) -> str:
     Maps the robot type argument to a human-readable string.
 
     Args:
-        robot_type (str): The robot type provided as input, e.g., '2-dof', 'scara', '5-dof'.
+        robot_type (str): The robot type provided as input, e.g., '2-dof', 'scara', '5-dof', and '6-dof'.
 
     Returns:
         str: The corresponding robot type in a more readable format.
@@ -535,9 +535,11 @@ def get_robot_type(robot_type: str) -> str:
         return "Scara"
     elif robot_type == "5-dof":
         return "Five-DOF"
+    elif robot_type == "6-dof":
+        return "Six-DOF"
     else:
         raise ValueError(
-            f"[ERROR] Unsupported robot type '{robot_type}'. Please provide one of the available types ('2-dof', 'scara', '5-dof')."
+            f"[ERROR] Unsupported robot type '{robot_type}'. Please provide one of the available types ('2-dof', 'scara', '5-dof', and '6-dof)."
         )
 
 
