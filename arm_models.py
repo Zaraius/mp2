@@ -1650,15 +1650,18 @@ class SixDOFRobot:
             # solve for error
             pos_current = self.solve_forward_kinematics(self.theta)
             error = pos_des - pos_current[0:3]
-            print('error', error)
-            #print('self.theta', self.theta)
-            print(np.linalg.norm(error) > tol)
+            print("Error:", error, "Norm:", np.linalg.norm(error))
             # If error outside tol, recalculate theta (Newton-Raphson)
             if np.linalg.norm(error) > tol:
-                self.theta = self.theta + np.dot(
-                    self.inverse_jacobian(pseudo=True), error
+                # Compute incremental update (scaled by dt)
+                delta_theta = .05 * np.dot(self.inverse_jacobian(pseudo=True), error)
+                self.theta = self.theta + delta_theta
+                # Ensure joint limits are applied after each update
+                self.theta = np.clip(
+                    self.theta,
+                    [limit[0] for limit in self.theta_limits],
+                    [limit[1] for limit in self.theta_limits],
                 )
-            # If error is within tolerence: break
             else:
                 break
 
@@ -1749,7 +1752,7 @@ class SixDOFRobot:
 
             # Compute linear velocity part of the Jacobian
             jacobian[:, i] = np.cross(z, r)
-=        # Replace near-zero values with zero, primarily for debugging purposes
+      # Replace near-zero values with zero, primarily for debugging purposes
         return near_zero(jacobian)
 
     def inverse_jacobian(self, pseudo=False):
