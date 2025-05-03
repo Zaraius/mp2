@@ -1679,14 +1679,12 @@ class SixDOFRobot:
         # Calculate the joint velocity using the inverse Jacobian
         # thetadot = self.inverse_jacobian(pseudo=True) @ vel
         thetadot = self.damped_inverse_jacobian() @ vel
-
         # (Corrective measure) Ensure joint velocities stay within limits
         thetadot = np.clip(
             thetadot,
             [limit[0] for limit in self.thetadot_limits],
             [limit[1] for limit in self.thetadot_limits],
         )
-
         # Update joint angles
         self.theta[0] += 0.02 * thetadot[0]
         self.theta[1] += 0.02 * thetadot[1]
@@ -1715,12 +1713,12 @@ class SixDOFRobot:
         # Define DH parameters
         DH = np.zeros((6, 4))
         
-        self.DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
-        self.DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
-        self.DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
-        self.DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
-        self.DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
+        DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
+        DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
+        DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
+        DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
+        DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
+        DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
 
         # Compute transformation matrices
         T = np.zeros((self.num_dof, 4, 4))
@@ -1751,8 +1749,7 @@ class SixDOFRobot:
 
             # Compute linear velocity part of the Jacobian
             jacobian[:, i] = np.cross(z, r)
-
-        # Replace near-zero values with zero, primarily for debugging purposes
+=        # Replace near-zero values with zero, primarily for debugging purposes
         return near_zero(jacobian)
 
     def inverse_jacobian(self, pseudo=False):
@@ -1780,7 +1777,6 @@ class SixDOFRobot:
             J = self.jacobian(q)
         else:
             J = self.jacobian()
-
         JT = np.transpose(J)
         I = np.eye(3)
         return JT @ np.linalg.inv(J @ JT + (damping_factor**2) * I)
