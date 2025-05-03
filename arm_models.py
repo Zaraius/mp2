@@ -70,7 +70,7 @@ class Robot:
         self.waypoint_x, self.waypoint_y, self.waypoint_z = [], [], []
         self.waypoint_rotx, self.waypoint_roty, self.waypoint_rotz = [], [], []
         self.show_animation = show_animation
-        self.plot_limits = [0.65, 0.65, 0.8]
+        self.plot_limits = [1, 1, 1.2]
 
         if self.show_animation:
             self.fig = Figure(figsize=(12, 10), dpi=100)
@@ -218,6 +218,10 @@ class Robot:
         # draw lines to connect the points
         for i in range(len(self.robot.points) - 1):
             self.draw_line_3D(self.robot.points[i], self.robot.points[i + 1])
+        #     print("Robot points:")
+        # for i, p in enumerate(self.robot.points):
+        #     print(f"  Point {i}: {p}")
+
 
         # draw the points
         for i in range(len(self.robot.points)):
@@ -1372,6 +1376,14 @@ class SixDOFRobot:
 
         # Joint angles (initialized to zero)
         self.theta = [0, 0, 0, 0, 0, 0]
+    
+        self.l1 = (128.3 + 115.0) / 1000   # 243.3 mm
+        self.l2 = 30.0 / 1000         # offset
+        self.l3 = 280.0 / 1000      # long horizontal reach
+        self.l4 = 20.0  / 1000     # small offset
+        self.l5 = (140.0 + 105.0)  / 1000  # vertical section
+        self.l6 = (28.5 + 28.5)  / 1000    # vertical section
+        self.l7 = (105.0 + 130.0) / 1000   # vertical section to EE
 
         # Joint limits (in radians)
         self.theta_limits = [
@@ -1423,12 +1435,13 @@ class SixDOFRobot:
             for i, th in enumerate(self.theta)
         ]
 
-        self.DH[0] = [self.theta[0], 128.3 + 115, 0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 30, 280, np.pi]
-        self.DH[2] = [self.theta[2] + np.pi / 2, 20, 0, np.pi / 2]
-        self.DH[3] = [self.theta[3] + np.pi / 2, 140 + 105, 0, np.pi / 2]
-        self.DH[4] = [self.theta[4] + np.pi, 28.5 + 28.5, 0, np.pi / 2]
-        self.DH[5] = [self.theta[5] + np.pi / 2, 105 + 130, 0, 0]
+        self.DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
+        self.DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
+        self.DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
+        self.DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
+        self.DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
+
 
         # Compute the transformation matrices
         for i in range(self.num_dof):
@@ -1473,7 +1486,9 @@ class SixDOFRobot:
         k = np.array([0, 0, 1])
 
         # subtracting l4 and l5 in the z direction from the end effector pos
-        P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+        # P_3 = P_EE - ((self.l4 + self.l5) * (EE_rot @ k))
+        P_3 = P_EE - ((self.l7) * (EE_rot @ k))
+
 
         # Solve decoupled kinematic problem in frame 1 for theta 2 & 3
         P3_x, P3_y, P3_z = P_3[0], P_3[1], P_3[2]
@@ -1635,6 +1650,9 @@ class SixDOFRobot:
             # solve for error
             pos_current = self.solve_forward_kinematics(self.theta)
             error = pos_des - pos_current[0:3]
+            print('error', error)
+            #print('self.theta', self.theta)
+            print(np.linalg.norm(error) > tol)
             # If error outside tol, recalculate theta (Newton-Raphson)
             if np.linalg.norm(error) > tol:
                 self.theta = self.theta + np.dot(
@@ -1697,13 +1715,12 @@ class SixDOFRobot:
         # Define DH parameters
         DH = np.zeros((6, 4))
         
-        
-        DH[0] = [theta[0], 128.3 + 115, 0, np.pi / 2]
-        DH[1] = [theta[1] + np.pi / 2, 30, 280, np.pi]
-        DH[2] = [theta[2] + np.pi / 2, 20, 0, np.pi / 2]
-        DH[3] = [theta[3] + np.pi / 2, 140 + 105, 0, np.pi / 2]
-        DH[4] = [theta[4] + np.pi, 28.5 + 28.5, 0, np.pi / 2]
-        DH[5] = [theta[5] + np.pi / 2, 105 + 130, 0, 0]
+        self.DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
+        self.DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
+        self.DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
+        self.DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
+        self.DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
 
         # Compute transformation matrices
         T = np.zeros((self.num_dof, 4, 4))
@@ -1807,12 +1824,13 @@ class SixDOFRobot:
 
         # DH parameters = [theta, d, a, alpha]
         DH = np.zeros((6, 4))
-        DH[0] = [theta[0], 128.3 + 115, 0, np.pi / 2]
-        DH[1] = [theta[1] + np.pi / 2, 30, 280, np.pi]
-        DH[2] = [theta[2] + np.pi / 2, 20, 0, np.pi / 2]
-        DH[3] = [theta[3] + np.pi / 2, 140 + 105, 0, np.pi / 2]
-        DH[4] = [theta[4] + np.pi, 28.5 + 28.5, 0, np.pi / 2]
-        DH[5] = [theta[5] + np.pi / 2, 105 + 130, 0, 0]
+        self.DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
+        self.DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
+        self.DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
+        self.DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
+        self.DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
+        self.DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
+
 
         T = np.zeros((self.num_dof, 4, 4))
         for i in range(self.num_dof):
