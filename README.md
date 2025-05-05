@@ -10,7 +10,7 @@ arm based off of the Kinova Gen3lite. While there is also a framework for 2-DOF 
 
 No AI models were used in developing the code.
 
-<img src = "media/FPK.png">
+<img src = "media/StartingPos.png">
 An example for what the visualization tool looks like
 
 ## Requirements
