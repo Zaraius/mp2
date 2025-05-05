@@ -1,10 +1,10 @@
 # Module 2: Implementation of Inverse Kinematics in Simulator
-By Xavier Nishikawa, Zaraius Billimoria, & Julian Shah
+By Xavier Nishikawa & Julian Shah
 based on code from Kenechukwu Mbanisi
 
-This project is the mini project 2 code for the Fundamentals of Robotics class taught by Kenechukwu Mbanisi (Kene). 
-It builds of the simulator built by Kene to implement analytical and numerical inverse kinematics for a 5-DOF robot
-arm. While there is also a framework for 2-DOF and SCARA type robot arms, it isn't used. 
+This project is the Final Project code for the Fundamentals of Robotics class taught by Kenechukwu Mbanisi (Kene). 
+It builds of the simulator built by Kene to implement analytical and numerical inverse kinematics for a 6-DOF robot
+arm based off of the Kinova Gen3lite. While there is also a framework for 2-DOF and SCARA type robot arms, it isn't used. 
 
 ### Disclosure for AI
 
@@ -23,7 +23,7 @@ An example for what the visualization tool looks like
 
 - To run the main scripts, use the command below
 ``` bash
-$ python3 main_arm.py --robot_type 5-dof
+$ python3 main_arm.py --robot_type 6-dof
 # this configures the five-DOF arm
 ```
 
