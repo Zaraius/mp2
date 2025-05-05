@@ -303,7 +303,7 @@ class SixDOFRobot:
     forward kinematics, inverse kinematics, velocity kinematics, and Jacobian computation.
 
     Attributes:
-        l1, l2, l3, l4, l5, l6: Link lengths of the robotic arm.
+        l1, l2, l3, l4, l5, l6, l7: Link lengths of the robotic arm.
         theta: List of joint angles in radians.
         theta_limits: Joint limits for each joint.
         ee: End-effector object for storing the position and orientation of the end-effector.
@@ -320,7 +320,6 @@ class SixDOFRobot:
         self.theta = [0, 0, 0, 0, 0, 0]
 
         # Link Lengths
-        # Only some of these are actually used because the num
         self.l1 = (128.3 + 115.0) / 1000   # 243.3 mm
         self.l2 = 30.0 / 1000         # offset
         self.l3 = 280.0 / 1000      # long horizontal reach
@@ -399,17 +398,19 @@ class SixDOFRobot:
         Numerical inverse kinematics for position-only control (x, y, z).
         Uses pseudoinverse of position Jacobian (3x6).
         """
-
+        # Desired position of end effector
         pos_des = np.array([EE.x, EE.y, EE.z])
 
+        # 100 iterations to try to minimize error 
         for i in range(ilimit):
             pos_current = self.solve_forward_kinematics(self.theta)[:3]
+            # calculate the error by subtracting the two vectors
             error = pos_des - pos_current
             print(f"[{i}] Error: {error}, Norm: {np.linalg.norm(error):.4f}")
-
+            # then doing euclidean distance to see if error is less than tolerance
             if np.linalg.norm(error) < tol:
                 break
-
+                
             J_full = self.jacobian()
             J_pos = J_full[:3, :]  # Extract top 3 rows (∂x, ∂y, ∂z)
 
