@@ -1630,42 +1630,36 @@ class SixDOFRobot:
         elif soln == 3:
             self.calc_forward_kinematics(solutions[sorted_indices[3]], radians=True)
 
-    def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=50):
-        """Calculate numerical inverse kinematics based on input coordinates.
-
-        Using Newton-Raphson method of optimization, move towards the desired position using
-        the inverse jacobian times the positional error.
-
-        Args
-            EE: EnderEffector object containing desired EE positions
-            tol: float defining allowable tolerance between desired position and true position
-            ilimit: int defining maximum number of iterations to find allowable solution
+    def calc_numerical_ik(self, EE: EndEffector, tol=0.01, ilimit=100):
+        """
+        Numerical inverse kinematics for position-only control (x, y, z).
+        Uses pseudoinverse of position Jacobian (3x6).
         """
 
-        # find desired EE position
-        pos_des = [EE.x, EE.y, EE.z]
+        pos_des = np.array([EE.x, EE.y, EE.z])
 
-        # make sure that the loop doesn't run forever by defining iteration limit
-        for _ in range(ilimit):
-            # solve for error
-            pos_current = self.solve_forward_kinematics(self.theta)
-            error = pos_des - pos_current[0:3]
-            print("Error:", error, "Norm:", np.linalg.norm(error))
-            # If error outside tol, recalculate theta (Newton-Raphson)
-            if np.linalg.norm(error) > tol:
-                # Compute incremental update (scaled by dt)
-                delta_theta = .05 * np.dot(self.inverse_jacobian(pseudo=True), error)
-                self.theta = self.theta + delta_theta
-                # Ensure joint limits are applied after each update
-                self.theta = np.clip(
-                    self.theta,
-                    [limit[0] for limit in self.theta_limits],
-                    [limit[1] for limit in self.theta_limits],
-                )
-            else:
+        for i in range(ilimit):
+            pos_current = self.solve_forward_kinematics(self.theta)[:3]
+            error = pos_des - pos_current
+            print(f"[{i}] Error: {error}, Norm: {np.linalg.norm(error):.4f}")
+
+            if np.linalg.norm(error) < tol:
                 break
 
+            J_full = self.jacobian()
+            J_pos = J_full[:3, :]  # Extract top 3 rows (∂x, ∂y, ∂z)
 
+            delta_theta = 0.05 * np.linalg.pinv(J_pos) @ error
+            self.theta = self.theta + delta_theta
+
+            # Enforce joint limits
+            self.theta = np.clip(
+                self.theta,
+                [lim[0] for lim in self.theta_limits],
+                [lim[1] for lim in self.theta_limits]
+            )
+
+        # Recompute final FK after convergence
         self.calc_forward_kinematics(self.theta, radians=True)
 
     def calc_velocity_kinematics(self, vel: list):
@@ -1814,28 +1808,31 @@ class SixDOFRobot:
         )
 
     def solve_forward_kinematics(self, theta: list, radians=True):
-        """Solves the new transformation matrix from base to EE at current theta values"""
+        """Solves the transformation matrix from base to EE at current theta values"""
 
-        # Convert degrees to radians
         if not radians:
-            for i in range(len(theta)):
-                theta[i] = np.deg2rad(theta[i])
+            theta = [np.deg2rad(t) for t in theta]  # convert in place safely
 
         # DH parameters = [theta, d, a, alpha]
         DH = np.zeros((6, 4))
-        self.DH[0] = [self.theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
-        self.DH[2] = [self.theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
-        self.DH[3] = [self.theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
-        self.DH[4] = [self.theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
-        self.DH[5] = [self.theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
-
+        DH[0] = [theta[0], (128.3 + 115.0) / 1000, 0.0, np.pi / 2]
+        DH[1] = [theta[1] + np.pi / 2, 30.0 / 1000, 280.0 / 1000, np.pi]
+        DH[2] = [theta[2] + np.pi / 2, 20.0 / 1000, 0.0, np.pi / 2]
+        DH[3] = [theta[3] + np.pi / 2, (140.0 + 105.0) / 1000, 0.0, np.pi / 2]
+        DH[4] = [theta[4] + np.pi, (28.5 + 28.5) / 1000, 0.0, np.pi / 2]
+        DH[5] = [theta[5] + np.pi / 2, (105.0 + 130.0) / 1000, 0.0, 0.0]
 
         T = np.zeros((self.num_dof, 4, 4))
         for i in range(self.num_dof):
             T[i] = dh_to_matrix(DH[i])
 
-        return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @T[5] @ np.array([0, 0, 0, 1])
+        T_total = T[0]
+        for i in range(1, self.num_dof):
+            T_total = T_total @ T[i]
+
+        pos_ee = T_total @ np.array([0, 0, 0, 1])
+        return pos_ee[:3]
+
 
     def calc_robot_points(self):
         """Calculates the main arm points using the current joint angles"""
