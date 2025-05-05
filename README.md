@@ -1,4 +1,4 @@
-# Module 2: Implementation of Inverse Kinematics in Simulator
+# Final Project: Implementation of Forward and Inverse Kinematics in Simulator for a 6 DOF Kinova Gen3lite arm
 By Xavier Nishikawa & Julian Shah
 based on code from Kenechukwu Mbanisi
 
@@ -24,14 +24,8 @@ An example for what the visualization tool looks like
 - To run the main scripts, use the command below
 ``` bash
 $ python3 main_arm.py --robot_type 6-dof
-# this configures the five-DOF arm
+# this configures the six-DOF arm
 ```
-
-
-### Usage Guide
-
-<img src = "media/arm-kinematics-viz-tool.png">
-
 
 
 ## **Forward position kinematics (FPK)**
@@ -40,11 +34,15 @@ Our implementation of inverse numerical kinematics uses forward kinematics to ca
 The forward kinematic implementation is copied from Kene's implementation and is not solely our work. Interfacing with
 the FPK can be done through the sliders in the GUI (graphical user interface). 
 
+## **Forward velocity kinematics (FVK)**
+
+Our implementation of forward velocity kinematics blah blah
+
 ## **Inverse position kinematics (IPK)**
 
 ### Analytical
 
-The analytical inverse kinematics uses a geometric approach to solve for the desired joint angles of a 5-DOF Hiwonder
+The analytical inverse kinematics uses a geometric approach to solve for the desired joint angles of a 6-DOF Kinova Gen3Lite
 robot arm. This results in multiple solutions, with only one or two feasible for physical constraints to meet. Such 
 constraints are, for example, joint limits and link lengths.
 
