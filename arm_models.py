@@ -473,12 +473,12 @@ class SixDOFRobot:
 
         # Define DH parameters (Refer to our DH Table for more information)
         DH = np.zeros((6, 4))
-        self.DH[0] = [self.theta[0], self.l1, 0.0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, self.l2, self.l3, np.pi]
-        self.DH[2] = [self.theta[2] + np.pi / 2, self.l4, 0.0, np.pi / 2]
-        self.DH[3] = [self.theta[3] + np.pi / 2, self.l5, 0.0, np.pi / 2]
-        self.DH[4] = [self.theta[4] + np.pi, self.l6, 0.0, np.pi / 2]
-        self.DH[5] = [self.theta[5] + np.pi / 2, self.l7 , 0.0, 0.0]
+        DH[0] = [self.theta[0], self.l1, 0.0, np.pi / 2]
+        DH[1] = [self.theta[1] + np.pi / 2, self.l2, self.l3, np.pi]
+        DH[2] = [self.theta[2] + np.pi / 2, self.l4, 0.0, np.pi / 2]
+        DH[3] = [self.theta[3] + np.pi / 2, self.l5, 0.0, np.pi / 2]
+        DH[4] = [self.theta[4] + np.pi, self.l6, 0.0, np.pi / 2]
+        DH[5] = [self.theta[5] + np.pi / 2, self.l7 , 0.0, 0.0]
 
 
         # Compute transformation matrices
@@ -579,12 +579,12 @@ class SixDOFRobot:
 
         # DH parameters = [theta, d, a, alpha]
         DH = np.zeros((6, 4))
-        self.DH[0] = [self.theta[0], self.l1, 0.0, np.pi / 2]
-        self.DH[1] = [self.theta[1] + np.pi / 2, self.l2, self.l3, np.pi]
-        self.DH[2] = [self.theta[2] + np.pi / 2, self.l4, 0.0, np.pi / 2]
-        self.DH[3] = [self.theta[3] + np.pi / 2, self.l5, 0.0, np.pi / 2]
-        self.DH[4] = [self.theta[4] + np.pi, self.l6, 0.0, np.pi / 2]
-        self.DH[5] = [self.theta[5] + np.pi / 2, self.l7 , 0.0, 0.0]
+        DH[0] = [theta[0], self.l1, 0.0, np.pi / 2]
+        DH[1] = [theta[1] + np.pi / 2, self.l2, self.l3, np.pi]
+        DH[2] = [theta[2] + np.pi / 2, self.l4, 0.0, np.pi / 2]
+        DH[3] = [theta[3] + np.pi / 2, self.l5, 0.0, np.pi / 2]
+        DH[4] = [theta[4] + np.pi, self.l6, 0.0, np.pi / 2]
+        DH[5] = [theta[5] + np.pi / 2, self.l7 , 0.0, 0.0]
 
 
         T = np.zeros((self.num_dof, 4, 4))
