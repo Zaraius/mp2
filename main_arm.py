@@ -154,51 +154,11 @@ class Visualizer:
             row_number += 1
             self.pose_button.append(position_value)
 
-        # Create buttons for inverse kinematics solutions
-        self.ik1_move_button = ttk.Button(
-            self.control_frame, text="1", command=self.solve_IK1
-        )
-        self.ik1_move_button.grid(column=0, row=row_number)
-
-        self.ik2_move_button = ttk.Button(
-            self.control_frame, text="2", command=self.solve_IK2
-        )
-        self.ik2_move_button.grid(column=1, row=row_number)
-
-        self.ik3_move_button = ttk.Button(
-            self.control_frame, text="3", command=self.solve_IK3
-        )
-        self.ik3_move_button.grid(column=2, row=row_number)
-
-        self.ik4_move_button = ttk.Button(
-            self.control_frame, text="4", command=self.solve_IK4
-        )
-        self.ik4_move_button.grid(column=3, row=row_number)
-
-        # self.ik5_move_button = ttk.Button(
-        #     self.control_frame, text="5", command=self.solve_IK5
-        # )
-        # self.ik5_move_button.grid(column=4, row=row_number)
-
-        # self.ik6_move_button = ttk.Button(
-        #     self.control_frame, text="6", command=self.solve_IK6
-        # )
-        # self.ik6_move_button.grid(column=5, row=row_number)
-
-        # self.ik7_move_button = ttk.Button(
-        #     self.control_frame, text="7", command=self.solve_IK7
-        # )
-        # self.ik7_move_button.grid(column=6, row=row_number)
-
-        # self.ik8_move_button = ttk.Button(
-        #     self.control_frame, text="8", command=self.solve_IK8
-        # )
-        # self.ik8_move_button.grid(column=7, row=row_number)
-
+    
         self.ik3_move_button = ttk.Button(
             self.control_frame, text="Num", command=self.numerical_solve
         )
-        self.ik3_move_button.grid(column=8, row=row_number)
+        self.ik3_move_button.grid(column=1, row=row_number)
         row_number += 3
 
         # ------------------------------------------------------------------------------------------------
